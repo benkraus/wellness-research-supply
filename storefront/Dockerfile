@@ -7,28 +7,24 @@ WORKDIR /app
 
 FROM base AS builder
 
-WORKDIR /app/storefront
-
-COPY storefront/package.json storefront/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 
 RUN corepack prepare pnpm@9.10.0 --activate
 RUN pnpm install --frozen-lockfile
 
-COPY storefront/ ./
+COPY . ./
 
 RUN pnpm build
 
 FROM base AS runner
 
-WORKDIR /app/storefront
-
-COPY storefront/package.json storefront/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 
 RUN corepack prepare pnpm@9.10.0 --activate
 RUN pnpm install --prod --frozen-lockfile
 
-COPY --from=builder /app/storefront/build ./build
-COPY --from=builder /app/storefront/public ./public
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/public ./public
 
 ENV NODE_ENV=production
 ENV PORT=80
