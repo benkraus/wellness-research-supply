@@ -3,7 +3,11 @@ import type {
 	CalculateShippingOptionPriceDTO,
 	CartAddressDTO,
 	CartLineItemDTO,
+	CreateFulfillmentResult,
 	CreateShippingOptionDTO,
+	FulfillmentDTO,
+	FulfillmentItemDTO,
+	FulfillmentOrderDTO,
 	FulfillmentOption,
 	OrderLineItemDTO,
 	StockLocationAddressDTO,
@@ -35,14 +39,14 @@ type FulfillmentContext = {
 		CartAddressDTO,
 		"created_at" | "updated_at" | "deleted_at" | "id"
 	>;
-	items?: (CartLineItemDTO | OrderLineItemDTO)[];
+	items?: ShipmentItem[];
 	currency_code?: string;
 };
 
-type FulfillmentItem = {
-	line_item_id?: string;
-	quantity?: number;
-};
+type ShipmentItem =
+	| CartLineItemDTO
+	| OrderLineItemDTO
+	| NonNullable<FulfillmentOrderDTO["items"]>[number];
 
 class ShipStationProviderService extends AbstractFulfillmentProviderService {
 	static identifier = "shipstation";
@@ -110,7 +114,7 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 			CartAddressDTO,
 			"created_at" | "updated_at" | "deleted_at" | "id"
 		>;
-		items: CartLineItemDTO[] | OrderLineItemDTO[];
+		items: ShipmentItem[];
 		currency_code: string;
 	}): Promise<GetShippingRatesResponse> {
 		if (!from_address?.address) {
@@ -175,7 +179,7 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 				validate_address: "no_validation",
 				items: items?.map((item) => ({
 					name: item.title || "",
-					quantity: item.quantity,
+					quantity: typeof item.quantity === "number" ? item.quantity : 0,
 					sku:
 						"variant_sku" in item && typeof item.variant_sku === "string"
 							? item.variant_sku
@@ -276,10 +280,12 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 
 	async createFulfillment(
 		data: Record<string, unknown>,
-		items: FulfillmentItem[],
-		order: { items?: OrderLineItemDTO[]; currency_code?: string } | undefined,
-		fulfillment: Record<string, unknown>,
-	): Promise<Record<string, unknown>> {
+		items: Partial<Omit<FulfillmentItemDTO, "fulfillment">>[],
+		order: Partial<FulfillmentOrderDTO> | undefined,
+		fulfillment: Partial<
+			Omit<FulfillmentDTO, "provider_id" | "data" | "items">
+		>,
+	): Promise<CreateFulfillmentResult> {
 		const { shipment_id } = data as {
 			shipment_id: string;
 		};
@@ -301,10 +307,12 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 		}
 
 		const originalShipment = await this.client.getShipment(shipment_id);
-		const orderItemsToFulfill: OrderLineItemDTO[] = [];
+		const orderItemsToFulfill: ShipmentItem[] = [];
 
 		items.forEach((item) => {
-			const fulfillmentItem = item as FulfillmentItem;
+			const fulfillmentItem = item as Partial<
+				Omit<FulfillmentItemDTO, "fulfillment">
+			>;
 			if (!fulfillmentItem?.line_item_id) {
 				return;
 			}
@@ -354,13 +362,25 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 		const label = await this.client.purchaseLabelForShipment(
 			newShipment.shipment_id,
 		);
+		const labelUrl = label.label_download?.pdf || label.label_download?.href || "";
+		const trackingUrl = label.label_download?.href || label.label_download?.pdf || "";
+		const existingData = (
+			fulfillment as { data?: Record<string, unknown> }
+		).data;
 
 		return {
 			data: {
-				...((fulfillment.data as object) || {}),
+				...(existingData || {}),
 				label_id: label.label_id,
 				shipment_id: label.shipment_id,
 			},
+			labels: [
+				{
+					tracking_number: label.tracking_number || "",
+					tracking_url: trackingUrl,
+					label_url: labelUrl,
+				},
+			],
 		};
 	}
 

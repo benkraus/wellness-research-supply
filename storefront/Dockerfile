@@ -1,38 +1,36 @@
 FROM node:20-alpine AS base
 
 RUN apk update && apk add --no-cache libc6-compat
+RUN corepack enable
 
 WORKDIR /app
 
 FROM base AS builder
 
-COPY . .
+WORKDIR /app/storefront
 
-RUN npx --yes turbo@2.1.2 prune --scope=storefront --docker
+COPY storefront/package.json storefront/pnpm-lock.yaml ./
 
-FROM base AS installer
+RUN corepack prepare pnpm@9.10.0 --activate
+RUN pnpm install --frozen-lockfile
 
-COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/yarn.lock yarn.lock
-COPY --from=builder /app/.yarnrc.yml .yarnrc.yml
-COPY --from=builder /app/.yarn .yarn
+COPY storefront/ ./
 
-RUN yarn install
-
-COPY --from=builder /app/out/full/ .
-
-RUN yarn turbo build --filter=storefront && \
-    yarn workspaces focus --all --production && \
-    rm -rf node_modules/.cache .yarn/cache
+RUN pnpm build
 
 FROM base AS runner
 
-COPY --chown=node:node --from=installer /app/ .
+WORKDIR /app/storefront
 
-USER 1000
+COPY storefront/package.json storefront/pnpm-lock.yaml ./
 
-WORKDIR /app/apps/storefront
+RUN corepack prepare pnpm@9.10.0 --activate
+RUN pnpm install --prod --frozen-lockfile
 
+COPY --from=builder /app/storefront/build ./build
+COPY --from=builder /app/storefront/public ./public
+
+ENV NODE_ENV=production
 ENV PORT=80
 
-CMD ["yarn", "start"]
+CMD ["pnpm", "start"]
