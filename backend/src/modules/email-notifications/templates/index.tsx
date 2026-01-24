@@ -12,6 +12,16 @@ import {
 	isOrderPlacedTemplateData,
 } from "./order-placed";
 import {
+	ORDER_PROCESSING,
+	OrderProcessingTemplate,
+	isOrderProcessingTemplateData,
+} from "./order-processing";
+import {
+	ORDER_NOTIFICATION,
+	OrderNotificationTemplate,
+	isOrderNotificationTemplateData,
+} from "./order-notification";
+import {
 	PASSWORD_CHANGED,
 	PasswordChangedTemplate,
 	isPasswordChangedData,
@@ -26,6 +36,8 @@ import { WELCOME, WelcomeEmail, isWelcomeData } from "./welcome";
 export const EmailTemplates = {
 	INVITE_USER,
 	ORDER_PLACED,
+	ORDER_PROCESSING,
+	ORDER_NOTIFICATION,
 	WELCOME,
 	EMAIL_VERIFICATION,
 	RESET_PASSWORD,
@@ -56,6 +68,24 @@ export function generateEmailTemplate(
 				);
 			}
 			return <OrderPlacedTemplate {...data} />;
+
+		case EmailTemplates.ORDER_PROCESSING:
+			if (!isOrderProcessingTemplateData(data)) {
+				throw new MedusaError(
+					MedusaError.Types.INVALID_DATA,
+					`Invalid data for template "${EmailTemplates.ORDER_PROCESSING}"`,
+				);
+			}
+			return <OrderProcessingTemplate {...data} />;
+
+		case EmailTemplates.ORDER_NOTIFICATION:
+			if (!isOrderNotificationTemplateData(data)) {
+				throw new MedusaError(
+					MedusaError.Types.INVALID_DATA,
+					`Invalid data for template "${EmailTemplates.ORDER_NOTIFICATION}"`,
+				);
+			}
+			return <OrderNotificationTemplate {...data} />;
 
 		case EmailTemplates.WELCOME:
 			if (!isWelcomeData(data)) {
@@ -104,7 +134,9 @@ export function generateEmailTemplate(
 export {
 	EmailVerificationTemplate,
 	InviteUserEmail,
+	OrderNotificationTemplate,
 	OrderPlacedTemplate,
+	OrderProcessingTemplate,
 	PasswordChangedTemplate,
 	ResetPasswordTemplate,
 	WelcomeEmail,

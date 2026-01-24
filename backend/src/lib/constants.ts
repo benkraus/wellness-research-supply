@@ -90,6 +90,62 @@ export const ACCOUNT_FROM_EMAIL = process.env.ACCOUNT_FROM_EMAIL ?? 'hello@welln
 export const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY;
 
 /**
+ * (optional) Orders notification email
+ */
+export const ORDERS_NOTIFICATION_EMAIL = process.env.ORDERS_NOTIFICATION_EMAIL;
+
+/**
+ * (optional) Venmo configuration
+ */
+export const VENMO_ACCESS_TOKEN = process.env.VENMO_ACCESS_TOKEN;
+export const VENMO_SESSION_ID = process.env.VENMO_SESSION_ID;
+export const VENMO_DEVICE_ID = process.env.VENMO_DEVICE_ID;
+export const VENMO_COOKIE = process.env.VENMO_COOKIE;
+export const VENMO_USER_AGENT = process.env.VENMO_USER_AGENT;
+export const VENMO_ACCEPT_LANGUAGE = process.env.VENMO_ACCEPT_LANGUAGE;
+export const VENMO_AUDIENCE = process.env.VENMO_AUDIENCE;
+export const VENMO_TARGET_PHONE = process.env.VENMO_TARGET_PHONE;
+export const VENMO_TARGET_EMAIL = process.env.VENMO_TARGET_EMAIL;
+export const VENMO_TARGET_USER_ID = process.env.VENMO_TARGET_USER_ID;
+export const VENMO_ACTOR_ID = process.env.VENMO_ACTOR_ID;
+export const VENMO_NOTE_TEMPLATE = process.env.VENMO_NOTE_TEMPLATE;
+export const VENMO_POLL_ENABLED =
+  process.env.VENMO_POLL_ENABLED === undefined
+    ? true
+    : process.env.VENMO_POLL_ENABLED === "true";
+export const VENMO_POLL_BASE_SECONDS = Number(
+  process.env.VENMO_POLL_BASE_SECONDS ?? 30
+);
+export const VENMO_POLL_MAX_SECONDS = Number(
+  process.env.VENMO_POLL_MAX_SECONDS ?? 1800
+);
+export const VENMO_POLL_MAX_ATTEMPTS = Number(
+  process.env.VENMO_POLL_MAX_ATTEMPTS ?? 12
+);
+export const VENMO_POLL_MAX_DAYS = Number(
+  process.env.VENMO_POLL_MAX_DAYS ?? 3
+);
+
+export const VENMO_POLL_BASE_SECONDS_SAFE = Number.isFinite(
+  VENMO_POLL_BASE_SECONDS
+)
+  ? VENMO_POLL_BASE_SECONDS
+  : 30
+export const VENMO_POLL_MAX_SECONDS_SAFE = Number.isFinite(
+  VENMO_POLL_MAX_SECONDS
+)
+  ? VENMO_POLL_MAX_SECONDS
+  : 1800
+export const VENMO_POLL_MAX_ATTEMPTS_SAFE = Number.isFinite(
+  VENMO_POLL_MAX_ATTEMPTS
+)
+  ? VENMO_POLL_MAX_ATTEMPTS
+  : 12
+export const VENMO_POLL_MAX_DAYS_SAFE = Number.isFinite(VENMO_POLL_MAX_DAYS)
+  ? VENMO_POLL_MAX_DAYS
+  : 3
+
+/**
  * (optional) Meilisearch configuration
  */
 export const MEILISEARCH_HOST = process.env.MEILISEARCH_HOST;

@@ -13,6 +13,18 @@ import {
   SENDGRID_FROM_EMAIL,
   SHOULD_DISABLE_ADMIN,
   STORE_CORS,
+  VENMO_ACCESS_TOKEN,
+  VENMO_SESSION_ID,
+  VENMO_DEVICE_ID,
+  VENMO_COOKIE,
+  VENMO_USER_AGENT,
+  VENMO_ACCEPT_LANGUAGE,
+  VENMO_AUDIENCE,
+  VENMO_TARGET_PHONE,
+  VENMO_TARGET_EMAIL,
+  VENMO_TARGET_USER_ID,
+  VENMO_ACTOR_ID,
+  VENMO_NOTE_TEMPLATE,
   WORKER_MODE,
   MINIO_ENDPOINT,
   MINIO_ACCESS_KEY,
@@ -24,6 +36,31 @@ import {
 } from 'lib/constants';
 
 loadEnv(process.env.NODE_ENV, process.cwd());
+
+const paymentProviders = []
+
+const venmoEnabled = VENMO_ACCESS_TOKEN
+
+if (venmoEnabled) {
+  paymentProviders.push({
+    resolve: './src/modules/venmo-payment',
+    id: 'venmo',
+    options: {
+      accessToken: VENMO_ACCESS_TOKEN,
+      sessionId: VENMO_SESSION_ID,
+      deviceId: VENMO_DEVICE_ID,
+      cookie: VENMO_COOKIE,
+      userAgent: VENMO_USER_AGENT,
+      acceptLanguage: VENMO_ACCEPT_LANGUAGE,
+      audience: VENMO_AUDIENCE,
+      targetPhone: VENMO_TARGET_PHONE,
+      targetEmail: VENMO_TARGET_EMAIL,
+      targetUserId: VENMO_TARGET_USER_ID,
+      actorId: VENMO_ACTOR_ID,
+      noteTemplate: VENMO_NOTE_TEMPLATE,
+    },
+  })
+}
 
 const medusaConfig = {
   projectConfig: {
@@ -143,7 +180,7 @@ const medusaConfig = {
       key: Modules.PAYMENT,
       resolve: '@medusajs/payment',
       options: {
-        providers: [],
+        providers: paymentProviders,
       },
     },
   ],

@@ -28,6 +28,32 @@ export const completeCheckoutSchema = z
     sameAsShipping: z.boolean().optional(),
     billingAddress: z.any(),
     noRedirect: z.boolean().optional(),
+    venmoContact: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.providerId.includes('venmo')) {
+      const contact = data.venmoContact?.trim();
+      if (!contact) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Venmo phone or email is required',
+          path: ['venmoContact'],
+        });
+        return;
+      }
+
+      const isEmail = /.+@.+\..+/.test(contact);
+      const digits = contact.replace(/\D/g, '');
+      const isPhone = digits.length >= 7;
+
+      if (!isEmail && !isPhone) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Enter a valid Venmo phone number or email',
+          path: ['venmoContact'],
+        });
+      }
+    }
   })
   .refine((data) => (data.sameAsShipping ? z.any() : addressSchema.safeParse(data.billingAddress).success), {
     message: 'Valid billing address is required when creating a new address',
@@ -58,9 +84,27 @@ export async function action(actionArgs: ActionFunctionArgs) {
 
   const activePaymentSession = cart.payment_collection?.payment_sessions?.find((ps) => ps.status === 'pending');
 
-  if (activePaymentSession?.provider_id !== data.providerId || !cart.payment_collection?.payment_sessions?.length) {
+  const venmoContact = data.venmoContact?.trim();
+  let paymentSessionData: Record<string, unknown> | undefined;
+
+  if (venmoContact) {
+    if (venmoContact.includes('@')) {
+      paymentSessionData = { venmo_target: { email: venmoContact } };
+    } else {
+      const digits = venmoContact.replace(/\D/g, '');
+      paymentSessionData = { venmo_target: { phone: digits || venmoContact } };
+    }
+  }
+
+  const shouldInitiateSession =
+    activePaymentSession?.provider_id !== data.providerId ||
+    !cart.payment_collection?.payment_sessions?.length ||
+    paymentSessionData;
+
+  if (shouldInitiateSession) {
     await initiatePaymentSession(actionArgs.request, cart, {
       provider_id: data.providerId,
+      ...(paymentSessionData ? { data: paymentSessionData } : {}),
     });
   }
 

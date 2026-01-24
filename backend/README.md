@@ -14,6 +14,57 @@ Video instructions: https://youtu.be/PPxenu7IjGM
 - **MinIO storage** (Automatic setup when using the Railway template) - fallback to local storage.
 - **Meilisearch** (Automatic setup when using the Railway template)
 
+### venmo payments
+The Venmo provider is enabled when the required env vars are present. You can run Venmo alongside other providers (e.g. e-check).
+
+Required env vars:
+
+```
+VENMO_ACCESS_TOKEN=...
+```
+
+Optional env vars:
+
+```
+VENMO_SESSION_ID=...
+VENMO_DEVICE_ID=...
+VENMO_COOKIE=...
+VENMO_USER_AGENT=Venmo/10.80.0 (iPhone; iOS 26.2; Scale/3.0)
+VENMO_ACCEPT_LANGUAGE=en-US;q=1.0
+VENMO_AUDIENCE=public
+VENMO_TARGET_PHONE=15555551234
+VENMO_TARGET_EMAIL=...
+VENMO_TARGET_USER_ID=...
+VENMO_ACTOR_ID=...
+VENMO_NOTE_TEMPLATE=Order {session_id}
+ORDERS_NOTIFICATION_EMAIL=...
+VENMO_POLL_ENABLED=true
+VENMO_POLL_BASE_SECONDS=30
+VENMO_POLL_MAX_SECONDS=1800
+VENMO_POLL_MAX_ATTEMPTS=12
+VENMO_POLL_MAX_DAYS=3
+```
+
+Per-order Venmo destination:
+- The storefront collects the buyer's Venmo phone or email and stores it on the payment session data.
+- The provider uses that per-session target first, and falls back to `VENMO_TARGET_*` if provided.
+
+#### Region payment provider config
+Venmo only shows up at checkout if the region includes the Venmo provider ID.
+
+Option A (Admin UI):
+- Admin → Settings → Regions → Edit Region → Payment Providers → enable **Venmo**
+
+Option B (seed data):
+- Add `"pp_venmo_venmo"` to the region’s `payment_providers` in `backend/src/scripts/seed.ts`.
+- Example:
+
+```
+payment_providers: ["pp_system_default", "pp_venmo_venmo"],
+```
+
+If you add another provider (e-check, Stripe, etc.), include its provider ID in the same list so multiple options appear at checkout.
+
 ### commands
 
 `cd backend/`
