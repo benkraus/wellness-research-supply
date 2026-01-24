@@ -85,6 +85,11 @@ export const ORDERS_FROM_EMAIL = process.env.ORDERS_FROM_EMAIL ?? 'orders@wellne
 export const ACCOUNT_FROM_EMAIL = process.env.ACCOUNT_FROM_EMAIL ?? 'hello@wellnessresearchsupply.com';
 
 /**
+ * (optional) ShipStation API key
+ */
+export const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY;
+
+/**
  * (optional) Meilisearch configuration
  */
 export const MEILISEARCH_HOST = process.env.MEILISEARCH_HOST;
