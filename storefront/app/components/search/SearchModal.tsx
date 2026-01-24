@@ -5,6 +5,7 @@ import { InstantSearch } from 'react-instantsearch-hooks-web';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { useStorefront } from '@app/hooks/useStorefront';
+import { getPosthog } from '@app/lib/posthog';
 import { SEARCH_INDEX_NAME, getSearchClient } from '@app/lib/search-client';
 
 import { Hits } from './Hits';
@@ -16,11 +17,27 @@ export const SearchModal = () => {
   const { search } = state;
   const isOpen = Boolean(search?.open);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasTrackedOpenRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      hasTrackedOpenRef.current = false;
+      return;
+    }
+
+    if (hasTrackedOpenRef.current) return;
+
+    const posthog = getPosthog();
+    if (!posthog) return;
+
+    posthog.capture('search_opened');
+    hasTrackedOpenRef.current = true;
   }, [isOpen]);
 
   return (

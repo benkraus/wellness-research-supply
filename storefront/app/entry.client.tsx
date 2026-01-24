@@ -1,6 +1,7 @@
 // https://github.com/remix-run/remix/issues/2947
 
 import * as Sentry from '@sentry/remix';
+import posthog from 'posthog-js';
 import { StrictMode, startTransition } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { HydratedRouter } from 'react-router/dom';
@@ -8,6 +9,7 @@ import { HydratedRouter } from 'react-router/dom';
 declare global {
   interface Window {
     ENV: any;
+    posthog?: typeof posthog;
   }
 }
 
@@ -17,6 +19,15 @@ if (window?.ENV?.SENTRY_DSN)
     environment: window?.ENV?.SENTRY_ENVIRONMENT,
     integrations: [],
   });
+
+if (window?.ENV?.PUBLIC_POSTHOG_KEY) {
+  const posthogHost = window?.ENV?.PUBLIC_POSTHOG_HOST;
+  posthog.init(window.ENV.PUBLIC_POSTHOG_KEY, {
+    api_host: posthogHost || undefined,
+    capture_pageview: false,
+  });
+  window.posthog = posthog;
+}
 
 const hydrate = () =>
   startTransition(() => {

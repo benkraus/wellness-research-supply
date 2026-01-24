@@ -3,11 +3,12 @@ import { ButtonLink } from '@app/components/common/buttons/ButtonLink';
 import { IconButton } from '@app/components/common/buttons/IconButton';
 import { useCart } from '@app/hooks/useCart';
 import { useRegion } from '@app/hooks/useRegion';
+import { getPosthog } from '@app/lib/posthog';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import { formatCartSubtotal, formatPrice } from '@libs/util/prices';
 import clsx from 'clsx';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetchers, useNavigate } from 'react-router';
 import { CartDrawerItem } from './CartDrawerItem';
 
@@ -161,11 +162,33 @@ export const CartDrawer: FC = () => {
 
   // Local state to control the dialog - initialize with cartDrawerOpen
   const [isOpen, setIsOpen] = useState(false);
+  const hasTrackedOpenRef = useRef(false);
 
   // Sync our local state with the cart drawer state
   useEffect(() => {
     setIsOpen(cartDrawerOpen === true);
   }, [cartDrawerOpen]);
+
+  useEffect(() => {
+    if (!cartDrawerOpen) {
+      hasTrackedOpenRef.current = false;
+      return;
+    }
+
+    if (hasTrackedOpenRef.current) return;
+
+    const posthog = getPosthog();
+    if (!posthog) return;
+
+    posthog.capture('cart_viewed', {
+      cart_id: cart?.id,
+      item_count: cart?.items?.length ?? 0,
+      value: cart?.item_subtotal,
+      currency: cart?.region?.currency_code ?? region.currency_code,
+    });
+
+    hasTrackedOpenRef.current = true;
+  }, [cartDrawerOpen, cart?.id, cart?.item_subtotal, cart?.items?.length, cart?.region?.currency_code, region.currency_code]);
 
   const lineItems = cart?.items ?? [];
   const lineItemsTotal = lineItems.reduce((acc, item) => acc + item.quantity, 0);

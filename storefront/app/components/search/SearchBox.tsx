@@ -1,6 +1,7 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { getPosthog } from '@app/lib/posthog';
 import clsx from 'clsx';
-import { type ChangeEvent, type FormEvent, type RefObject, useEffect, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useSearchBox } from 'react-instantsearch-hooks-web';
 
 export type SearchBoxProps = {
@@ -12,6 +13,7 @@ export type SearchBoxProps = {
 export const SearchBox = ({ placeholder, inputRef, className }: SearchBoxProps) => {
   const { query, refine, clear } = useSearchBox();
   const [value, setValue] = useState(query);
+  const lastTrackedQueryRef = useRef<string | null>(null);
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
     setValue(event.currentTarget.value);
@@ -24,6 +26,16 @@ export const SearchBox = ({ placeholder, inputRef, className }: SearchBoxProps) 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       refine(value);
+
+      const trimmed = value.trim();
+      if (trimmed.length < 2) return;
+      if (lastTrackedQueryRef.current === trimmed) return;
+
+      const posthog = getPosthog();
+      if (!posthog) return;
+
+      posthog.capture('search_performed', { query: trimmed });
+      lastTrackedQueryRef.current = trimmed;
     }, 150);
 
     return () => clearTimeout(timeoutId);

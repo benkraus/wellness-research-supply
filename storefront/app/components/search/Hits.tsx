@@ -1,3 +1,4 @@
+import { getPosthog } from '@app/lib/posthog';
 import { formatPrice } from '@libs/util/prices';
 import { Link } from 'react-router';
 import { useHits } from 'react-instantsearch-hooks-web';
@@ -43,11 +44,22 @@ export const Hits = ({ onSelect }: HitsProps) => {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {hits.map((hit) => (
+      {hits.map((hit, index) => (
         <Link
           key={hit.objectID}
           to={`/products/${hit.handle}`}
-          onClick={onSelect}
+          onClick={() => {
+            const posthog = getPosthog();
+            if (posthog) {
+              posthog.capture('search_result_clicked', {
+                product_id: hit.id,
+                product_title: hit.title,
+                product_handle: hit.handle,
+                position: index + 1,
+              });
+            }
+            onSelect?.();
+          }}
           className="group relative flex items-start gap-4 rounded-lg p-3 hover:bg-gray-50 transition-colors"
         >
           <div className="aspect-square h-20 w-20 flex-none overflow-hidden rounded-md bg-gray-100">

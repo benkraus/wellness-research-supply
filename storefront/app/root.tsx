@@ -1,6 +1,6 @@
 import { getCommonMeta, mergeMeta } from '@libs/util/meta';
 import { getRootLoader } from '@libs/util/server/root.server';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Links,
   Meta,
@@ -9,11 +9,13 @@ import {
   ScrollRestoration,
   ShouldRevalidateFunction,
   useLoaderData,
+  useLocation,
   useRouteError,
 } from 'react-router';
 import { MetaFunction } from 'react-router';
 import { Page } from './components/layout/Page';
 import { RootProviders } from './providers/root-providers';
+import { getPosthog } from './lib/posthog';
 
 import '@app/styles/global.css';
 import { useRootLoaderData } from './hooks/useRootLoaderData';
@@ -60,9 +62,42 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 
 function App() {
   const headRef = useRef<HTMLHeadElement>(null);
+  const lastIdentifiedRef = useRef<string | null>(null);
   const data = useRootLoaderData();
+  const location = useLocation();
 
-  const { env = {}, siteDetails } = data || {};
+  const { env = {}, siteDetails, customer } = data || {};
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const posthog = getPosthog();
+    if (!posthog) return;
+    posthog.capture('$pageview', { $current_url: window.location.href });
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    const posthog = getPosthog();
+    if (!posthog) return;
+
+    if (customer?.id) {
+      if (lastIdentifiedRef.current === customer.id) return;
+
+      const personProperties: Record<string, unknown> = {};
+      if (customer.email) personProperties.email = customer.email;
+      if (customer.first_name) personProperties.first_name = customer.first_name;
+      if (customer.last_name) personProperties.last_name = customer.last_name;
+      if (customer.phone) personProperties.phone = customer.phone;
+
+      posthog.identify(customer.id, personProperties);
+      lastIdentifiedRef.current = customer.id;
+      return;
+    }
+
+    if (lastIdentifiedRef.current) {
+      posthog.reset();
+      lastIdentifiedRef.current = null;
+    }
+  }, [customer?.id, customer?.email, customer?.first_name, customer?.last_name, customer?.phone]);
 
   return (
     <RootProviders>

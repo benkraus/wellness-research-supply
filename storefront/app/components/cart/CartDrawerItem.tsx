@@ -1,6 +1,7 @@
 import { Button } from '@app/components/common/buttons/Button';
 import { Image } from '@app/components/common/images/Image';
 import { useRemoveCartItem } from '@app/hooks/useRemoveCartItem';
+import { getPosthog } from '@app/lib/posthog';
 import { formatLineItemPrice } from '@libs/util/prices';
 import { StoreCartLineItem } from '@medusajs/types';
 import clsx from 'clsx';
@@ -14,7 +15,23 @@ export interface CartDrawerItemProps {
 
 export const CartDrawerItem: FC<CartDrawerItemProps> = ({ item, currencyCode, isRemoving }) => {
   const removeCartItem = useRemoveCartItem();
-  const handleRemoveFromCart = () => removeCartItem.submit(item);
+  const handleRemoveFromCart = () => {
+    const posthog = getPosthog();
+    if (posthog) {
+      posthog.capture('remove_from_cart', {
+        item_id: item.id,
+        product_id: item.product_id,
+        product_title: item.product_title,
+        product_handle: item.product_handle,
+        variant_id: item.variant_id,
+        variant_title: item.variant_title,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        currency: currencyCode,
+      });
+    }
+    removeCartItem.submit(item);
+  };
 
   return (
     <li
