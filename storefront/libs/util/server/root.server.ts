@@ -56,6 +56,8 @@ export const getRootLoader = async ({ request }: LoaderFunctionArgs) => {
         PUBLIC_SEARCH_ENDPOINT: config.PUBLIC_SEARCH_ENDPOINT,
         PUBLIC_SEARCH_API_KEY: config.PUBLIC_SEARCH_API_KEY,
         SEARCH_INDEX_NAME: config.SEARCH_INDEX_NAME,
+        PUBLIC_POSTHOG_KEY: config.PUBLIC_POSTHOG_KEY,
+        PUBLIC_POSTHOG_HOST: config.PUBLIC_POSTHOG_HOST,
       },
       customer,
       regions,

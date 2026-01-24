@@ -16,6 +16,7 @@ import { Share } from '@app/components/share';
 import { useCart } from '@app/hooks/useCart';
 import { useProductInventory } from '@app/hooks/useProductInventory';
 import { useRegion } from '@app/hooks/useRegion';
+import { getPosthog } from '@app/lib/posthog';
 import { createLineItemSchema } from '@app/routes/api.cart.line-items.create';
 import HomeIcon from '@heroicons/react/24/solid/HomeIcon';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,6 +83,10 @@ const variantIsSoldOut: (variant: StoreProductVariant | undefined) => boolean = 
 
 export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductTemplateProps) => {
   const formRef = useRef<HTMLFormElement>(null);
+  const lastProductViewRef = useRef<string | null>(null);
+  const lastAddToCartSubmissionRef = useRef<number | null>(null);
+  const lastAddToCartCaptureRef = useRef<number | null>(null);
+  const lastAddToCartPayloadRef = useRef<Record<string, unknown> | null>(null);
   const addToCartFetcher = useFetcher<any>({ key: FetcherKeys.cart.createLineItem });
   const { toggleCartDrawer } = useCart();
   const { region } = useRegion();
@@ -197,6 +202,26 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
 
   const productSoldOut = useProductInventory(product).averageInventory === 0;
 
+  useEffect(() => {
+    if (!product?.id) return;
+    const posthog = getPosthog();
+    if (!posthog) return;
+    if (lastProductViewRef.current === product.id) return;
+
+    const payload: Record<string, unknown> = {
+      product_id: product.id,
+      product_title: product.title,
+      currency: currencyCode,
+    };
+
+    if (product.handle) payload.product_handle = product.handle;
+    if (selectedVariant?.id) payload.variant_id = selectedVariant.id;
+    if (selectedVariant?.title) payload.variant_title = selectedVariant.title;
+
+    posthog.capture('product_viewed', payload);
+    lastProductViewRef.current = product.id;
+  }, [product.id, product.title, product.handle, currencyCode, selectedVariant?.id, selectedVariant?.title]);
+
   /**
    * Updates controlled options based on a changed option and resets subsequent options
    * @param currentOptions - Current controlled options
@@ -266,9 +291,11 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
         formRef.current.reset();
 
         // Re-set the quantity field to 1
-        const quantityInput = formRef.current.querySelector('input[name="quantity"]') as HTMLInputElement;
-        if (quantityInput) {
-          quantityInput.value = '1';
+        const quantityField = formRef.current.querySelector(
+          'select[name="quantity"], input[name="quantity"]'
+        ) as HTMLSelectElement | HTMLInputElement | null;
+        if (quantityField) {
+          quantityField.value = '1';
         }
 
         // Keep the hidden productId field
@@ -296,9 +323,46 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
 
   // Use useCallback for the form submission handler
   const handleAddToCart = useCallback(() => {
+    const quantityField = formRef.current?.querySelector(
+      'select[name="quantity"], input[name="quantity"]'
+    ) as HTMLSelectElement | HTMLInputElement | null;
+    const quantityValue = quantityField?.value ?? '1';
+    const quantity = Number(quantityValue);
+    const normalizedQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+
+    lastAddToCartSubmissionRef.current = Date.now();
+    lastAddToCartPayloadRef.current = {
+      product_id: product.id,
+      product_title: product.title,
+      product_handle: product.handle,
+      variant_id: selectedVariant?.id,
+      variant_title: selectedVariant?.title,
+      quantity: normalizedQuantity,
+      currency: currencyCode,
+    };
+
     // Open cart drawer
     toggleCartDrawer(true);
-  }, [toggleCartDrawer]);
+  }, [currencyCode, product.handle, product.id, product.title, selectedVariant?.id, selectedVariant?.title, toggleCartDrawer]);
+
+  useEffect(() => {
+    if (addToCartFetcher.state !== 'idle') return;
+    if (!addToCartFetcher.data?.cart || hasErrors) return;
+
+    const submissionId = lastAddToCartSubmissionRef.current;
+    if (!submissionId || lastAddToCartCaptureRef.current === submissionId) return;
+
+    const posthog = getPosthog();
+    if (!posthog) return;
+
+    const payload = {
+      ...(lastAddToCartPayloadRef.current ?? {}),
+      cart_id: addToCartFetcher.data.cart.id,
+    };
+
+    posthog.capture('add_to_cart', payload);
+    lastAddToCartCaptureRef.current = submissionId;
+  }, [addToCartFetcher.state, addToCartFetcher.data?.cart, hasErrors]);
 
   return (
     <>

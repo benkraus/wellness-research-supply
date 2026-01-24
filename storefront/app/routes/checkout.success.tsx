@@ -1,10 +1,12 @@
 import { ButtonLink } from '@app/components/common/buttons/ButtonLink';
 import { Container } from '@app/components/common/container/Container';
 import { Image } from '@app/components/common/images/Image';
+import { getPosthog } from '@app/lib/posthog';
 import { formatPhoneNumber } from '@libs/util/phoneNumber';
 import { formatPrice } from '@libs/util/prices';
 import { retrieveOrder } from '@libs/util/server/data/orders.server';
 import { StoreOrder } from '@medusajs/types';
+import { useEffect, useRef } from 'react';
 import { LoaderFunctionArgs, redirect } from 'react-router';
 import { Link, useLoaderData } from 'react-router';
 
@@ -24,6 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs): Promise<{ order: 
 
 export default function CheckoutSuccessRoute() {
   const { order } = useLoaderData<typeof loader>();
+  const trackedOrderRef = useRef<string | null>(null);
   const discountTotal = order.discount_total || 0;
 
   const {
@@ -31,6 +34,38 @@ export default function CheckoutSuccessRoute() {
     billing_address: billingAddress,
     shipping_methods: shippingMethods,
   } = order as StoreOrder;
+
+  useEffect(() => {
+    if (!order?.id) return;
+    if (trackedOrderRef.current === order.id) return;
+
+    const posthog = getPosthog();
+    if (!posthog) return;
+
+    posthog.capture('purchase_completed', {
+      order_id: order.id,
+      cart_id: order.cart_id,
+      currency: order.currency_code,
+      item_count: order.items?.length ?? 0,
+      value: order.total,
+      subtotal: order.item_subtotal,
+      discount_total: order.discount_total,
+      shipping_total: order.shipping_total,
+      tax_total: order.tax_total,
+      items: (order.items ?? []).map((item) => ({
+        item_id: item.id,
+        product_id: item.product_id,
+        product_title: item.product_title,
+        product_handle: item.product_handle,
+        variant_id: item.variant_id,
+        variant_title: item.variant_title,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      })),
+    });
+
+    trackedOrderRef.current = order.id;
+  }, [order]);
 
   return (
     <section className="py-8">

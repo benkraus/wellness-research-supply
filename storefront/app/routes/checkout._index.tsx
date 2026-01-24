@@ -3,6 +3,7 @@ import { CheckoutSidebar } from '@app/components/checkout/CheckoutSidebar';
 import { Empty } from '@app/components/common/Empty/Empty';
 import { Button } from '@app/components/common/buttons/Button';
 import { CheckoutProvider } from '@app/providers/checkout-provider';
+import { getPosthog } from '@app/lib/posthog';
 import ShoppingCartIcon from '@heroicons/react/24/outline/ShoppingCartIcon';
 import { sdk } from '@libs/util/server/client.server';
 import { getCartId, removeCartId } from '@libs/util/server/cookies.server';
@@ -11,6 +12,7 @@ import { getCustomer } from '@libs/util/server/data/customer.server';
 import { listCartPaymentProviders } from '@libs/util/server/data/payment.server';
 import { CartDTO, StoreCart, StoreCartShippingOption, StorePaymentProvider } from '@medusajs/types';
 import { BasePaymentSession } from '@medusajs/types/dist/http/payment/common';
+import { useEffect, useRef } from 'react';
 import { LoaderFunctionArgs, redirect } from 'react-router';
 import { Link, useLoaderData } from 'react-router';
 
@@ -137,6 +139,25 @@ export const loader = async ({
 
 export default function CheckoutIndexRoute() {
   const { shippingOptions, paymentProviders, activePaymentSession, cart } = useLoaderData<typeof loader>();
+  const lastTrackedCheckoutRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!cart?.id) return;
+    if (!cart.items?.length) return;
+
+    const posthog = getPosthog();
+    if (!posthog) return;
+    if (lastTrackedCheckoutRef.current === cart.id) return;
+
+    posthog.capture('checkout_started', {
+      cart_id: cart.id,
+      currency: cart.region?.currency_code,
+      item_count: cart.items?.length ?? 0,
+      value: cart.item_subtotal,
+    });
+
+    lastTrackedCheckoutRef.current = cart.id;
+  }, [cart?.id, cart?.items?.length, cart?.item_subtotal, cart?.region?.currency_code]);
 
   if (!cart || !cart.items?.length)
     return (
