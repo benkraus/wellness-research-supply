@@ -1,7 +1,7 @@
 import { INotificationModuleService, IUserModuleService } from '@medusajs/framework/types'
 import { Modules } from '@medusajs/framework/utils'
 import { SubscriberArgs, SubscriberConfig } from '@medusajs/framework'
-import { BACKEND_URL } from '../lib/constants'
+import { ACCOUNT_FROM_EMAIL, BACKEND_URL } from '../lib/constants'
 import { EmailTemplates } from '../modules/email-notifications/templates'
 
 export default async function userInviteHandler({
@@ -19,10 +19,11 @@ export default async function userInviteHandler({
     await notificationModuleService.createNotifications({
       to: invite.email,
       channel: 'email',
+      from: ACCOUNT_FROM_EMAIL,
       template: EmailTemplates.INVITE_USER,
       data: {
         emailOptions: {
-          replyTo: 'info@example.com',
+          replyTo: ACCOUNT_FROM_EMAIL,
           subject: "You've been invited to Medusa!"
         },
         inviteLink: `${BACKEND_URL}/app/invite?token=${invite.token}`,

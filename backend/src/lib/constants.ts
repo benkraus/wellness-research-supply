@@ -79,10 +79,10 @@ export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 export const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || process.env.SENDGRID_FROM;
 
 /**
- * (optional) Stripe API key and webhook secret
+ * Email sender addresses
  */
-export const STRIPE_API_KEY = process.env.STRIPE_API_KEY;
-export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+export const ORDERS_FROM_EMAIL = process.env.ORDERS_FROM_EMAIL ?? 'orders@wellnessresearchsupply.com';
+export const ACCOUNT_FROM_EMAIL = process.env.ACCOUNT_FROM_EMAIL ?? 'hello@wellnessresearchsupply.com';
 
 /**
  * (optional) Meilisearch configuration
