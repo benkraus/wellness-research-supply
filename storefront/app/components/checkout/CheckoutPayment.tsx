@@ -5,6 +5,7 @@ import { Tab } from '@headlessui/react';
 import clsx from 'clsx';
 import { FC, useMemo } from 'react';
 import { ManualPayment } from './ManualPayment/ManualPayment';
+import { VenmoPayment } from './VenmoPayment/VenmoPayment';
 
 const SYSTEM_PROVIDER_ID = 'pp_system_default';
 
@@ -18,11 +19,19 @@ export const CheckoutPayment: FC = () => {
     () =>
       (paymentProviders ?? [])
         .filter((provider) => !provider.id.includes('stripe'))
-        .map((provider) => ({
-          id: provider.id,
-          label: provider.id === SYSTEM_PROVIDER_ID ? 'Manual Payment' : provider.name ?? provider.id,
-          component: ManualPayment,
-        })),
+        .map((provider) => {
+          const isVenmo = provider.id.includes('venmo');
+
+          return {
+            id: provider.id,
+            label: isVenmo
+              ? 'Venmo'
+              : provider.id === SYSTEM_PROVIDER_ID
+                ? 'Manual Payment'
+                : provider.name ?? provider.id,
+            component: isVenmo ? VenmoPayment : ManualPayment,
+          };
+        }),
     [paymentProviders],
   );
 

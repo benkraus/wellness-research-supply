@@ -83,6 +83,7 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
     sameAsShipping: true,
     billingAddress: defaultBillingAddress,
     providerId,
+    venmoContact: '',
   };
 
   const form = useRemixForm({
@@ -112,7 +113,11 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
       });
     }
 
-    return form.handleSubmit();
+    try {
+      return await form.handleSubmit();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const PaymentSubmitButton = () => (
