@@ -40,7 +40,7 @@ export const NewsletterSubscription: FC<{ className?: string }> = ({ className }
             <div className="items-end gap-2 border-b border-white">
               <div className="flex flex-col text-white gap-5">
                 <span className="text-lg font-bold">Newsletter</span>
-                <p className="font-light">Sign up for our newsletter to only receive good things.</p>
+                <p className="font-light">Sign up for our newsletter to receive updates and new releases.</p>
               </div>
 
               <div className="flex items-end gap-2">

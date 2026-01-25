@@ -25,7 +25,35 @@ export default async function emailVerificationHandler({
   )
 
   const storeBaseUrl = getStoreBaseUrl()
-  const verificationLink = data.verificationLink ?? `${storeBaseUrl}/account/verify-email?token=${data.token}`
+
+  if (!data.token && !data.verificationLink) {
+    console.error('Email verification payload missing token/link', { email: data.email })
+    return
+  }
+
+  const verificationLink = (() => {
+    if (data.verificationLink) {
+      try {
+        const url = new URL(data.verificationLink)
+        if (!url.searchParams.get('email')) {
+          url.searchParams.set('email', data.email)
+        }
+        if (data.token && !url.searchParams.get('token')) {
+          url.searchParams.set('token', data.token)
+        }
+        return url.toString()
+      } catch (error) {
+        console.error('Invalid verification link payload', error)
+      }
+    }
+
+    const url = new URL('/account/verify-email', storeBaseUrl)
+    if (data.token) {
+      url.searchParams.set('token', data.token)
+    }
+    url.searchParams.set('email', data.email)
+    return url.toString()
+  })()
 
   try {
     await notificationModuleService.createNotifications({

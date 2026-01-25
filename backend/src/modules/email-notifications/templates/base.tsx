@@ -14,6 +14,25 @@ interface BaseProps {
 }
 
 export const Base = ({ preview, children }: BaseProps) => {
+	const storeBaseUrl = (() => {
+		const storeOrigins =
+			process.env.STORE_CORS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
+		const firstOrigin = storeOrigins[0];
+		const backendUrl =
+			process.env.BACKEND_PUBLIC_URL ??
+			process.env.RAILWAY_PUBLIC_DOMAIN_VALUE ??
+			"http://localhost:9000";
+		return firstOrigin ?? process.env.STOREFRONT_URL ?? backendUrl;
+	})();
+
+	const logoUrl = (() => {
+		try {
+			return new URL("/assets/brand/wrs-gradient.svg", storeBaseUrl).toString();
+		} catch {
+			return "https://wellnessresearchsupply.com/assets/brand/wrs-gradient.svg";
+		}
+	})();
+
 	return (
 		<Html>
 			<Head>
@@ -51,7 +70,7 @@ export const Base = ({ preview, children }: BaseProps) => {
 					<Container className="border border-solid border-brand-teal/20 rounded my-[40px] mx-auto p-[20px] max-w-[465px] w-full overflow-hidden bg-brand-subtle">
 						<div className="mb-8 text-center">
 							<img
-								src="https://placehold.co/160x40/041B2B/B8F7AE?text=WRS&font=montserrat"
+								src={logoUrl}
 								alt="Wellness Research Supply"
 								className="mx-auto"
 								width="160"
