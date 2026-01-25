@@ -110,6 +110,13 @@ function App() {
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
           <Links />
+          {env.KLAVIYO_SITE_ID && (
+            <script
+              async
+              type="text/javascript"
+              src={`https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=${env.KLAVIYO_SITE_ID}`}
+            />
+          )}
           {siteDetails?.settings?.description && <meta name="description" content={siteDetails.settings.description} />}
         </head>
         <body className="min-h-screen">

@@ -32,7 +32,8 @@ import {
   MINIO_BUCKET,
   MEILISEARCH_HOST,
   MEILISEARCH_ADMIN_KEY,
-  SHIPSTATION_API_KEY
+  SHIPSTATION_API_KEY,
+  KLAVIYO_API_KEY
 } from 'lib/constants';
 
 loadEnv(process.env.NODE_ENV, process.cwd());
@@ -206,7 +207,13 @@ const medusaConfig = {
           }
         }
       }
-    }] : [])
+    }] : []),
+  ...(KLAVIYO_API_KEY ? [{
+    resolve: '@eancarr/klaviyo-medusa',
+    options: {
+      apiKey: KLAVIYO_API_KEY
+    }
+  }] : [])
   ]
 };
 

@@ -58,6 +58,7 @@ export const getRootLoader = async ({ request }: LoaderFunctionArgs) => {
         SEARCH_INDEX_NAME: config.SEARCH_INDEX_NAME,
         PUBLIC_POSTHOG_KEY: config.PUBLIC_POSTHOG_KEY,
         PUBLIC_POSTHOG_HOST: config.PUBLIC_POSTHOG_HOST,
+        KLAVIYO_SITE_ID: config.KLAVIYO_SITE_ID,
       },
       customer,
       regions,

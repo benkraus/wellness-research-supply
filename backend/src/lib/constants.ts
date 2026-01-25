@@ -90,6 +90,12 @@ export const ACCOUNT_FROM_EMAIL = process.env.ACCOUNT_FROM_EMAIL ?? 'hello@welln
 export const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY;
 
 /**
+ * (optional) Klaviyo configuration
+ */
+export const KLAVIYO_API_KEY = process.env.KLAVIYO_API_KEY;
+export const KLAVIYO_SITE_ID = process.env.KLAVIYO_SITE_ID;
+
+/**
  * (optional) Orders notification email
  */
 export const ORDERS_NOTIFICATION_EMAIL = process.env.ORDERS_NOTIFICATION_EMAIL;

@@ -17,4 +17,5 @@ export const config = {
   SEARCH_INDEX_NAME: process.env.SEARCH_INDEX_NAME,
   PUBLIC_POSTHOG_KEY: process.env.PUBLIC_POSTHOG_KEY,
   PUBLIC_POSTHOG_HOST: process.env.PUBLIC_POSTHOG_HOST,
+  KLAVIYO_SITE_ID: process.env.KLAVIYO_SITE_ID,
 };
