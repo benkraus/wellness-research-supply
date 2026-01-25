@@ -45,6 +45,22 @@ VENMO_POLL_MAX_ATTEMPTS=12
 VENMO_POLL_MAX_DAYS=3
 ```
 
+### telegram order notifications
+Send a Telegram message when a new order is placed.
+
+Required env vars:
+
+```
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
+```
+
+Optional env vars:
+
+```
+TELEGRAM_ORDER_NOTIFICATIONS_ENABLED=true
+```
+
 Per-order Venmo destination:
 - The storefront collects the buyer's Venmo phone or email and stores it on the payment session data.
 - The provider uses that per-session target first, and falls back to `VENMO_TARGET_*` if provided.

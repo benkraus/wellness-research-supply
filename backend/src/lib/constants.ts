@@ -95,6 +95,16 @@ export const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY;
 export const ORDERS_NOTIFICATION_EMAIL = process.env.ORDERS_NOTIFICATION_EMAIL;
 
 /**
+ * (optional) Telegram order notifications
+ */
+export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+export const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+export const TELEGRAM_ORDER_NOTIFICATIONS_ENABLED =
+  process.env.TELEGRAM_ORDER_NOTIFICATIONS_ENABLED === undefined
+    ? true
+    : process.env.TELEGRAM_ORDER_NOTIFICATIONS_ENABLED === "true";
+
+/**
  * (optional) Venmo configuration
  */
 export const VENMO_ACCESS_TOKEN = process.env.VENMO_ACCESS_TOKEN;

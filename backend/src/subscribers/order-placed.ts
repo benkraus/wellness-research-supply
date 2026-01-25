@@ -2,6 +2,7 @@ import { Modules } from '@medusajs/framework/utils'
 import { INotificationModuleService, IOrderModuleService, IPaymentModuleService } from '@medusajs/framework/types'
 import { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa'
 import { ORDERS_FROM_EMAIL } from '../lib/constants'
+import { sendTelegramOrderPlacedNotification } from '../lib/telegram'
 import { EmailTemplates } from '../modules/email-notifications/templates'
 
 const VENMO_PROVIDER_ID = 'venmo'
@@ -43,6 +44,12 @@ export default async function orderPlacedHandler({
     })
   } catch (error) {
     console.error('Error sending order confirmation notification:', error)
+  }
+
+  try {
+    await sendTelegramOrderPlacedNotification(order)
+  } catch (error) {
+    console.error('Error sending Telegram order notification:', error)
   }
 
   try {
