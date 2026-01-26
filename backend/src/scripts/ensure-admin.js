@@ -44,6 +44,7 @@ module.exports = async function ensureAdmin({ container }) {
           await authService.updateAuthIdentities({
             id: existingAuthIdentity.id,
             app_metadata: {
+              ...(existingAuthIdentity.app_metadata ?? {}),
               user_id: user.id,
             },
           });
@@ -60,6 +61,7 @@ module.exports = async function ensureAdmin({ container }) {
     await authService.updateAuthIdentities({
       id: registerResult.authIdentity.id,
       app_metadata: {
+        ...(registerResult.authIdentity.app_metadata ?? {}),
         user_id: user.id,
       },
     });
