@@ -41,13 +41,6 @@ export default async function emailVerificationHandler({
         if (data.token && !url.searchParams.get('token')) {
           url.searchParams.set('token', data.token)
         }
-        if (!data.token && !url.searchParams.get('token')) {
-          console.error('Verification link missing token', {
-            email: data.email,
-            verificationLink: data.verificationLink,
-          })
-          return null
-        }
         return url.toString()
       } catch (error) {
         console.error('Invalid verification link payload', error)
