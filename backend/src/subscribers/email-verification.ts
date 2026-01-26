@@ -34,12 +34,19 @@ export default async function emailVerificationHandler({
   const verificationLink = (() => {
     if (data.verificationLink) {
       try {
-        const url = new URL(data.verificationLink)
+        const url = new URL(data.verificationLink, storeBaseUrl)
         if (!url.searchParams.get('email')) {
           url.searchParams.set('email', data.email)
         }
         if (data.token && !url.searchParams.get('token')) {
           url.searchParams.set('token', data.token)
+        }
+        if (!data.token && !url.searchParams.get('token')) {
+          console.error('Verification link missing token', {
+            email: data.email,
+            verificationLink: data.verificationLink,
+          })
+          return null
         }
         return url.toString()
       } catch (error) {
@@ -47,13 +54,20 @@ export default async function emailVerificationHandler({
       }
     }
 
-    const url = new URL('/account/verify-email', storeBaseUrl)
-    if (data.token) {
-      url.searchParams.set('token', data.token)
+    if (!data.token) {
+      console.error('Email verification token missing', { email: data.email })
+      return null
     }
+
+    const url = new URL('/account/verify-email', storeBaseUrl)
+    url.searchParams.set('token', data.token)
     url.searchParams.set('email', data.email)
     return url.toString()
   })()
+
+  if (!verificationLink) {
+    return
+  }
 
   try {
     await notificationModuleService.createNotifications({

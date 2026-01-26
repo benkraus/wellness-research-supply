@@ -17,12 +17,13 @@ export const Base = ({ preview, children }: BaseProps) => {
 	const storeBaseUrl = (() => {
 		const storeOrigins =
 			process.env.STORE_CORS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
+		const storefrontUrl = process.env.STOREFRONT_URL?.trim() || undefined;
 		const firstOrigin = storeOrigins[0];
 		const backendUrl =
 			process.env.BACKEND_PUBLIC_URL ??
 			process.env.RAILWAY_PUBLIC_DOMAIN_VALUE ??
 			"http://localhost:9000";
-		return firstOrigin ?? process.env.STOREFRONT_URL ?? backendUrl;
+		return storefrontUrl ?? firstOrigin ?? backendUrl;
 	})();
 
 	const logoUrl = (() => {
