@@ -1,6 +1,6 @@
 const { ContainerRegistrationKeys, Modules } = require("@medusajs/framework/utils");
 
-module.exports = async function ensureAdmin({ container }) {
+exports.default = async function ensureAdmin({ container }) {
   const email = (process.env.MEDUSA_ADMIN_EMAIL || "").trim();
   const password = (process.env.MEDUSA_ADMIN_PASSWORD || "").trim();
 
