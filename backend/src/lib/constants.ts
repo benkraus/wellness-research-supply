@@ -81,8 +81,10 @@ export const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || process.en
 /**
  * Email sender addresses
  */
-export const ORDERS_FROM_EMAIL = process.env.ORDERS_FROM_EMAIL ?? 'orders@wellnessresearchsupply.com';
-export const ACCOUNT_FROM_EMAIL = process.env.ACCOUNT_FROM_EMAIL ?? 'hello@wellnessresearchsupply.com';
+export const ORDERS_FROM_EMAIL =
+  process.env.ORDERS_FROM_EMAIL ?? RESEND_FROM_EMAIL ?? SENDGRID_FROM_EMAIL ?? 'orders@wellnessresearchsupply.com';
+export const ACCOUNT_FROM_EMAIL =
+  process.env.ACCOUNT_FROM_EMAIL ?? RESEND_FROM_EMAIL ?? SENDGRID_FROM_EMAIL ?? 'hello@wellnessresearchsupply.com';
 
 /**
  * (optional) ShipStation API key
