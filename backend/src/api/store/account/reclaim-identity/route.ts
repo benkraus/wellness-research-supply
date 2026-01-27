@@ -21,7 +21,11 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(409).json({ error: 'Customer already exists.' })
   }
 
-  const authIdentityProvider = authModuleService.getAuthIdentityProviderService('emailpass')
+  const authIdentityProvider = (authModuleService as any).getAuthIdentityProviderService?.('emailpass')
+
+  if (!authIdentityProvider) {
+    return res.status(500).json({ error: 'Auth provider unavailable.' })
+  }
   let authIdentity
 
   try {
