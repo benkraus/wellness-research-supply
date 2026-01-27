@@ -1,13 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { baseMedusaConfig, getPublishableKey, sdk } from "@libs/util/server/client.server";
-import { config } from "@libs/util/server/config.server";
 import { setAuthToken } from "@libs/util/server/cookies.server";
 import { data } from "react-router";
 import { normalizePhoneNumber } from "@libs/util/phoneNumber";
-
-const getStorefrontUrl = (request: Request) => {
-	return config.STOREFRONT_URL ?? new URL(request.url).origin;
-};
 
 export const action = async ({ request }: { request: Request }) => {
 	const MIN_PASSWORD_LENGTH = 10;
@@ -124,61 +118,6 @@ export const action = async ({ request }: { request: Request }) => {
 			Authorization: `Bearer ${token}`,
 		},
 	);
-
-	const verificationToken = randomUUID();
-	const verificationTimestamp = new Date().toISOString();
-	const storefrontUrl = getStorefrontUrl(request);
-	const verificationUrl = new URL("/account/verify-email", storefrontUrl);
-	verificationUrl.searchParams.set("token", verificationToken);
-	verificationUrl.searchParams.set("email", email);
-
-	try {
-		await sdk.store.customer.update(
-			{
-				metadata: {
-					email_verification_token: verificationToken,
-					email_verified: false,
-					email_verification_token_created_at: verificationTimestamp,
-					email_verification_last_sent_at: verificationTimestamp,
-				},
-			},
-			{},
-			{
-				Authorization: `Bearer ${token}`,
-			},
-		);
-
-		const response = await fetch(
-			new URL("/store/account/email-verification", baseMedusaConfig.baseUrl),
-			{
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-					"x-publishable-api-key": publishableKey,
-				},
-				body: JSON.stringify({
-					email,
-					token: verificationToken,
-					verificationLink: verificationUrl.toString(),
-				}),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error("Verification email send failed.");
-		}
-	} catch (error) {
-		console.error("Failed to send verification email", error);
-		return data(
-			{
-				success: true,
-				email,
-				warning:
-					"Account created, but we couldn't send the verification email. Please resend it from your account page.",
-			},
-			{ headers },
-		);
-	}
 
 	return data({ success: true, email }, { headers });
 };
