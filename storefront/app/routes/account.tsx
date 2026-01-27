@@ -1,14 +1,21 @@
 import { AddressDisplay } from '@app/components/checkout/address/AddressDisplay';
 import { Container } from '@app/components/common/container/Container';
 import { Input } from '@app/components/common/forms/inputs/Input';
+import { InputCheckbox } from '@app/components/common/forms/inputs/InputCheckbox';
 import { useCustomer } from '@app/hooks/useCustomer';
 import { useRegion } from '@app/hooks/useRegion';
-import { applyPhoneInputFormatting, formatDate, formatPrice, medusaAddressToAddress } from '@libs/util';
+import {
+  applyPhoneInputFormatting,
+  formatDate,
+  formatPhoneNumberInput,
+  formatPrice,
+  medusaAddressToAddress,
+} from '@libs/util';
 import { getCustomer } from '@libs/util/server/data/customer.server';
 import { listOrdersWithCount } from '@libs/util/server/data/orders.server';
 import type { StoreOrder } from '@medusajs/types';
 import clsx from 'clsx';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Link,
   Outlet,
@@ -71,6 +78,7 @@ export default function AccountRoute() {
   const location = useLocation();
   const [view, setView] = useState<'login' | 'register'>('login');
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const lastSuccessRef = useRef(new Map<string, unknown>());
 
   const loginFetcher = useFetcher<AuthResponse>();
   const registerFetcher = useFetcher<AuthResponse>();
@@ -101,18 +109,29 @@ export default function AccountRoute() {
     if (isSubRoute || revalidator.state !== 'idle') {
       return;
     }
-    if (
-      loginFetcher.data?.success ||
-      registerFetcher.data?.success ||
-      logoutFetcher.data?.success ||
-      profileFetcher.data?.success ||
-      emailFetcher.data?.success ||
-      passwordFetcher.data?.success ||
-      resendFetcher.data?.success ||
-      addressFetcher.data?.success ||
-      addressActionFetcher.data?.success ||
-      addressUpdateFetcher.data?.success
-    ) {
+
+    const shouldRevalidate = (key: string, data?: { success?: boolean }) => {
+      if (!data?.success) return false;
+      const last = lastSuccessRef.current.get(key);
+      if (last === data) return false;
+      lastSuccessRef.current.set(key, data);
+      return true;
+    };
+
+    const needsRevalidate = [
+      ['login', loginFetcher.data],
+      ['register', registerFetcher.data],
+      ['logout', logoutFetcher.data],
+      ['profile', profileFetcher.data],
+      ['email', emailFetcher.data],
+      ['password', passwordFetcher.data],
+      ['resend', resendFetcher.data],
+      ['address', addressFetcher.data],
+      ['addressAction', addressActionFetcher.data],
+      ['addressUpdate', addressUpdateFetcher.data],
+    ].some(([key, data]) => shouldRevalidate(key, data as { success?: boolean } | undefined));
+
+    if (needsRevalidate) {
       revalidator.revalidate();
     }
   }, [
@@ -128,6 +147,7 @@ export default function AccountRoute() {
     addressUpdateFetcher.data,
     isSubRoute,
     revalidator,
+    revalidator.state,
   ]);
 
   useEffect(() => {
@@ -168,11 +188,14 @@ export default function AccountRoute() {
     return <Outlet />;
   }
 
+  const inputClassName =
+    'bg-highlight-50/95 text-primary-50 placeholder:text-primary-200 border border-primary-50/30 shadow-[inset_0_0_0_1px_rgba(94,234,212,0.08)] focus:border-primary-400/70 focus:ring-2 focus:ring-primary-400/25 transition-shadow';
+
   return (
     <div className="bg-highlight-50 py-12 sm:py-20 lg:py-24">
       <Container>
-        <div className="mx-auto max-w-3xl">
-          <div className="rounded-2xl border border-primary-900/10 bg-highlight-100 p-6 sm:p-8 shadow-sm">
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-[28px] border border-primary-900/15 bg-highlight-100/80 p-6 sm:p-8 lg:p-10 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.7)]">
             {customer?.id ? (
               <div className="space-y-10">
                 <div className="flex flex-wrap items-start justify-between gap-6">
@@ -223,7 +246,7 @@ export default function AccountRoute() {
                 {emailVerified && (
                   <>
                     <div className="grid gap-6 lg:grid-cols-2">
-                      <div className="rounded-2xl border border-primary-900/10 bg-highlight-50 p-6">
+                      <div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
                         <h2 className="text-lg font-semibold text-primary-50">Account details</h2>
                         <p className="mt-1 text-sm text-primary-200">Update your name and phone number.</p>
                         <profileFetcher.Form method="post" action="/api/account/update" className="mt-4 space-y-4">
@@ -234,7 +257,7 @@ export default function AccountRoute() {
                               defaultValue={customer.first_name || ''}
                               placeholder="First name"
                               required
-                              className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                              className={inputClassName}
                             />
                             <Input
                               name="last_name"
@@ -242,18 +265,18 @@ export default function AccountRoute() {
                               defaultValue={customer.last_name || ''}
                               placeholder="Last name"
                               required
-                              className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                              className={inputClassName}
                             />
                           </div>
                           <Input
                             name="phone"
                             type="tel"
-                            defaultValue={customer.phone || ''}
+                            defaultValue={formatPhoneNumberInput(customer.phone || '')}
                             placeholder="Phone (optional)"
                             inputMode="tel"
                             autoComplete="tel"
                             onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           {profileFetcher.data?.error && (
                             <p className="text-sm text-red-300">{profileFetcher.data.error}</p>
@@ -276,7 +299,7 @@ export default function AccountRoute() {
                             type="email"
                             placeholder="New email address"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <p className="text-xs text-primary-200">
                             Changing your email requires verification before you can manage your account again.
@@ -297,7 +320,7 @@ export default function AccountRoute() {
                         </emailFetcher.Form>
                       </div>
 
-                      <div className="rounded-2xl border border-primary-900/10 bg-highlight-50 p-6">
+                      <div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
                         <h2 className="text-lg font-semibold text-primary-50">Change password</h2>
                         <p className="mt-1 text-sm text-primary-200">Update your password any time.</p>
                         <passwordFetcher.Form
@@ -310,14 +333,14 @@ export default function AccountRoute() {
                             type="password"
                             placeholder="Current password"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="new_password"
                             type="password"
                             placeholder="New password"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <p className="text-xs text-primary-200">Use at least 10 characters.</p>
                           <Input
@@ -325,7 +348,7 @@ export default function AccountRoute() {
                             type="password"
                             placeholder="Confirm new password"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           {passwordFetcher.data?.error && (
                             <p className="text-sm text-red-300">{passwordFetcher.data.error}</p>
@@ -344,7 +367,7 @@ export default function AccountRoute() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-primary-900/10 bg-highlight-50 p-6">
+                    <div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
                       <h2 className="text-lg font-semibold text-primary-50">Shipping addresses</h2>
                       <p className="mt-1 text-sm text-primary-200">
                         Manage saved addresses and your default shipping location.
@@ -365,7 +388,9 @@ export default function AccountRoute() {
                               key={address.id}
                               className={clsx(
                                 'rounded-xl border p-4',
-                                isDefault ? 'border-primary-400/40 bg-primary-900/10' : 'border-primary-900/10',
+                                isDefault
+                                  ? 'border-primary-400/40 bg-primary-900/10'
+                                  : 'border-primary-900/15 bg-highlight-100/60',
                               )}
                             >
                               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -413,7 +438,7 @@ export default function AccountRoute() {
                               </div>
 
                               {isEditing && (
-                                <div className="mt-6 rounded-xl border border-primary-900/10 bg-highlight-100 p-5">
+                                <div className="mt-6 rounded-xl border border-primary-900/15 bg-highlight-100/80 p-5">
                                   <h4 className="text-sm font-semibold text-primary-50">Edit address</h4>
                                   <addressUpdateFetcher.Form
                                     method="post"
@@ -428,7 +453,7 @@ export default function AccountRoute() {
                                       placeholder="First name"
                                       defaultValue={address.first_name || ''}
                                       required
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <Input
                                       name="address.lastName"
@@ -436,24 +461,24 @@ export default function AccountRoute() {
                                       placeholder="Last name"
                                       defaultValue={address.last_name || ''}
                                       required
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <Input
                                       name="address.company"
                                       type="text"
                                       placeholder="Company (optional)"
                                       defaultValue={address.company || ''}
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <Input
                                       name="address.phone"
                                       type="tel"
                                       placeholder="Phone (optional)"
-                                      defaultValue={address.phone || ''}
+                                      defaultValue={formatPhoneNumberInput(address.phone || '')}
                                       inputMode="tel"
                                       autoComplete="tel"
                                       onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <Input
                                       name="address.address1"
@@ -461,14 +486,14 @@ export default function AccountRoute() {
                                       placeholder="Address"
                                       defaultValue={address.address_1 || ''}
                                       required
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200 sm:col-span-2"
+                                      className={`${inputClassName} sm:col-span-2`}
                                     />
                                     <Input
                                       name="address.address2"
                                       type="text"
                                       placeholder="Apartment, suite, etc."
                                       defaultValue={address.address_2 || ''}
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200 sm:col-span-2"
+                                      className={`${inputClassName} sm:col-span-2`}
                                     />
                                     <Input
                                       name="address.city"
@@ -476,7 +501,7 @@ export default function AccountRoute() {
                                       placeholder="City"
                                       defaultValue={address.city || ''}
                                       required
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <Input
                                       name="address.province"
@@ -484,7 +509,7 @@ export default function AccountRoute() {
                                       placeholder="State / Province"
                                       defaultValue={address.province || ''}
                                       required
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <Input
                                       name="address.postalCode"
@@ -492,7 +517,7 @@ export default function AccountRoute() {
                                       placeholder="Postal code"
                                       defaultValue={address.postal_code || ''}
                                       required
-                                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                                      className={inputClassName}
                                     />
                                     <div className="sm:col-span-1">
                                       <select
@@ -511,7 +536,7 @@ export default function AccountRoute() {
                                     </div>
                                     <div className="sm:col-span-2 flex flex-wrap items-center gap-4">
                                       <label className="inline-flex items-center gap-2 text-sm text-primary-200">
-                                        <input type="checkbox" name="set_default" className="h-4 w-4" />
+                                        <InputCheckbox name="set_default" className="h-4 w-4" />
                                         Make this my default shipping address
                                       </label>
                                     </div>
@@ -540,7 +565,7 @@ export default function AccountRoute() {
                         })}
                       </div>
 
-                      <div className="mt-8 rounded-xl border border-primary-900/10 bg-highlight-100 p-6">
+                      <div className="mt-8 rounded-xl border border-primary-900/15 bg-highlight-100/80 p-6">
                         <h3 className="text-base font-semibold text-primary-50">Add a new address</h3>
                         <addressFetcher.Form
                           method="post"
@@ -553,20 +578,20 @@ export default function AccountRoute() {
                             type="text"
                             placeholder="First name"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="address.lastName"
                             type="text"
                             placeholder="Last name"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="address.company"
                             type="text"
                             placeholder="Company (optional)"
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="address.phone"
@@ -575,41 +600,41 @@ export default function AccountRoute() {
                             inputMode="tel"
                             autoComplete="tel"
                             onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="address.address1"
                             type="text"
                             placeholder="Address"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200 sm:col-span-2"
+                            className={`${inputClassName} sm:col-span-2`}
                           />
                           <Input
                             name="address.address2"
                             type="text"
                             placeholder="Apartment, suite, etc."
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200 sm:col-span-2"
+                            className={`${inputClassName} sm:col-span-2`}
                           />
                           <Input
                             name="address.city"
                             type="text"
                             placeholder="City"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="address.province"
                             type="text"
                             placeholder="State / Province"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <Input
                             name="address.postalCode"
                             type="text"
                             placeholder="Postal code"
                             required
-                            className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                            className={inputClassName}
                           />
                           <div className="sm:col-span-1">
                             <select
@@ -628,7 +653,7 @@ export default function AccountRoute() {
                           </div>
                           <div className="sm:col-span-2 flex flex-wrap items-center gap-4">
                             <label className="inline-flex items-center gap-2 text-sm text-primary-200">
-                              <input type="checkbox" name="set_default" className="h-4 w-4" />
+                              <InputCheckbox name="set_default" className="h-4 w-4" />
                               Make this my default shipping address
                             </label>
                           </div>
@@ -651,7 +676,7 @@ export default function AccountRoute() {
                       </div>
                     </div>
 
-                  <div className="rounded-2xl border border-primary-900/10 bg-highlight-50 p-6">
+                  <div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
                     <h2 className="text-lg font-semibold text-primary-50">Order history</h2>
                     <p className="mt-1 text-sm text-primary-200">Review your recent orders and totals.</p>
 
@@ -760,14 +785,14 @@ export default function AccountRoute() {
                       type="email"
                       placeholder="Email"
                       required
-                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                      className={inputClassName}
                     />
                     <Input
                       name="password"
                       type="password"
                       placeholder="Password"
                       required
-                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                      className={inputClassName}
                     />
                     {loginFetcher.data?.error && (
                       <p className="text-sm text-red-300">{loginFetcher.data.error}</p>
@@ -792,14 +817,14 @@ export default function AccountRoute() {
                         type="text"
                         placeholder="First name"
                         required
-                        className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                        className={inputClassName}
                       />
                       <Input
                         name="last_name"
                         type="text"
                         placeholder="Last name"
                         required
-                        className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                        className={inputClassName}
                       />
                     </div>
                     <Input
@@ -807,7 +832,7 @@ export default function AccountRoute() {
                       type="email"
                       placeholder="Email"
                       required
-                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                      className={inputClassName}
                     />
                     <Input
                       name="phone"
@@ -816,14 +841,14 @@ export default function AccountRoute() {
                       inputMode="tel"
                       autoComplete="tel"
                       onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
-                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                      className={inputClassName}
                     />
                     <Input
                       name="password"
                       type="password"
                       placeholder="Password"
                       required
-                      className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
+                      className={inputClassName}
                     />
                     {registerFetcher.data?.error && (
                       <p className="text-sm text-red-300">{registerFetcher.data.error}</p>

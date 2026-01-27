@@ -64,7 +64,19 @@ export const getCommonMeta: MetaFunction = ({ matches }) => {
 
   if (!siteDetails) return [];
 
-  const canonicalUrl = `${siteDetails.settings.storefront_url}${currentMatch.pathname}`;
+  const storefrontUrl = siteDetails.settings.storefront_url ?? '';
+  const canonicalUrl = `${storefrontUrl}${currentMatch.pathname}`;
+  const ogImagePath = siteDetails.settings.og_image;
+  const ogImageAlt = siteDetails.settings.og_image_alt;
+  const ogImage = ogImagePath
+    ? (() => {
+        try {
+          return new URL(ogImagePath, storefrontUrl).toString();
+        } catch {
+          return ogImagePath;
+        }
+      })()
+    : undefined;
 
   return [
     { charset: 'utf-8' },
@@ -75,5 +87,14 @@ export const getCommonMeta: MetaFunction = ({ matches }) => {
     { property: 'og:url', content: canonicalUrl },
     { property: 'og:type', content: 'website' },
     { property: 'og:site_name', content: siteDetails.store.name },
+    ...(ogImage
+      ? [
+          { property: 'og:image', content: ogImage },
+          { property: 'og:image:alt', content: ogImageAlt },
+          { name: 'twitter:card', content: 'summary_large_image' },
+          { name: 'twitter:image', content: ogImage },
+          ...(ogImageAlt ? [{ name: 'twitter:image:alt', content: ogImageAlt }] : []),
+        ]
+      : []),
   ];
 };

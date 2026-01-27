@@ -296,6 +296,9 @@ export const getProductMeta: MetaFunction = ({ data, matches }) => {
     { property: 'og:description', content: ogDescription },
     { property: 'og:image', content: ogImage },
     { property: 'og:image:alt', content: ogImageAlt },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:image', content: ogImage },
+    ...(ogImageAlt ? [{ name: 'twitter:image:alt', content: ogImageAlt }] : []),
     { property: 'og:type', content: 'product' },
     ...(region?.currency_code
       ? [

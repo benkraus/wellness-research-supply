@@ -25,8 +25,18 @@ export const getRootMeta: MetaFunction = ({ data }) => {
   const description = 'Premium research supply for wellness and longevity. Clinical clarity, aquatic atmosphere.';
   const ogTitle = title;
   const ogDescription = description;
-  const ogImage = '';
-  const ogImageAlt = !!ogImage ? `${ogTitle} logo` : undefined;
+  const storefrontUrl = data?.siteDetails?.settings?.storefront_url ?? '';
+  const ogImagePath = data?.siteDetails?.settings?.og_image;
+  const ogImage = ogImagePath
+    ? (() => {
+        try {
+          return new URL(ogImagePath, storefrontUrl).toString();
+        } catch {
+          return ogImagePath;
+        }
+      })()
+    : '';
+  const ogImageAlt = data?.siteDetails?.settings?.og_image_alt || (ogImage ? `${ogTitle} logo` : undefined);
 
   return [
     { title },

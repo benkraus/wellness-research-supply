@@ -77,6 +77,8 @@ export interface NewsletterSubscriberRes {
 export interface SiteSettings {
   description?: string;
   favicon: string;
+  og_image?: string;
+  og_image_alt?: string;
   social_instagram?: string;
   social_youtube?: string;
   social_facebook?: string;
