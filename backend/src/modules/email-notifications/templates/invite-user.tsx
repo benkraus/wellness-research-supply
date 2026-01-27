@@ -65,10 +65,7 @@ export const InviteUserEmail = ({
 						overflowWrap: "break-word",
 					}}
 				>
-					<Link
-						href={inviteLink}
-						className="text-brand-teal no-underline hover:text-brand-mint"
-					>
+					<Link href={inviteLink} className="text-brand-teal no-underline">
 						{inviteLink}
 					</Link>
 				</Text>

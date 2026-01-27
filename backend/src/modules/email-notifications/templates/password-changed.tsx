@@ -37,10 +37,7 @@ export const PasswordChangedTemplate = ({
 					If you did not make this change, please contact our support team
 					immediately.
 				</Text>
-				<Link
-					href={contactUrl}
-					className="text-brand-teal text-sm font-semibold no-underline hover:text-brand-mint"
-				>
+				<Link href={contactUrl} className="text-brand-teal text-sm font-semibold no-underline">
 					Contact Support
 				</Link>
 			</Section>

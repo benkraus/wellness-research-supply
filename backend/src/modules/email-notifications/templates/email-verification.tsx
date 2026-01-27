@@ -50,10 +50,7 @@ export const EmailVerificationTemplate = ({
 						overflowWrap: "break-word",
 					}}
 				>
-					<Link
-						href={verificationLink}
-						className="text-brand-teal no-underline hover:text-brand-mint text-xs"
-					>
+					<Link href={verificationLink} className="text-brand-teal no-underline text-xs">
 						{verificationLink}
 					</Link>
 				</Text>

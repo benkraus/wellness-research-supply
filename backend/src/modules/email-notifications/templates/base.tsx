@@ -74,35 +74,6 @@ export const Base = ({ preview, children }: BaseProps) => {
 
 	return (
 		<Html>
-			<Head>
-				<meta name="viewport" content="width=device-width, initial-scale=1" />
-				<style>
-					{`
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
-
-            @media only screen and (max-width: 600px) {
-              .email-body {
-                padding-left: 8px !important;
-                padding-right: 8px !important;
-              }
-
-              .email-container {
-                max-width: 100% !important;
-                width: 100% !important;
-                margin: 24px auto !important;
-                padding: 16px !important;
-                border-radius: 16px !important;
-              }
-
-              .email-button {
-                display: block !important;
-                width: 100% !important;
-              }
-            }
-          `}
-				</style>
-			</Head>
-			<Preview>{preview}</Preview>
 			<Tailwind
 				config={{
 					theme: {
@@ -126,6 +97,35 @@ export const Base = ({ preview, children }: BaseProps) => {
 					},
 				}}
 			>
+				<Head>
+					<meta name="viewport" content="width=device-width, initial-scale=1" />
+					<style>
+						{`
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+
+            @media only screen and (max-width: 600px) {
+              .email-body {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+              }
+
+              .email-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 24px auto !important;
+                padding: 16px !important;
+                border-radius: 16px !important;
+              }
+
+              .email-button {
+                display: block !important;
+                width: 100% !important;
+              }
+            }
+          `}
+					</style>
+				</Head>
+				<Preview>{preview}</Preview>
 				<Body className="email-body bg-brand-dark my-auto mx-auto font-sans px-2 text-brand-text">
 					<Container className="email-container border border-solid border-brand-teal/20 rounded my-[40px] mx-auto p-[20px] max-w-[560px] w-full overflow-hidden bg-brand-subtle">
 						<div className="mb-8 text-center">

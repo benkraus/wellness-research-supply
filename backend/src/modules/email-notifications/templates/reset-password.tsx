@@ -48,12 +48,9 @@ export const ResetPasswordTemplate = ({
 						overflowWrap: "break-word",
 					}}
 				>
-					<Link
-						href={resetLink}
-						className="text-brand-teal no-underline hover:text-brand-mint text-xs"
-					>
-						{resetLink}
-					</Link>
+						<Link href={resetLink} className="text-brand-teal no-underline text-xs">
+							{resetLink}
+						</Link>
 				</Text>
 
 				<Hr className="border-brand-teal/20 my-8" />
