@@ -31,12 +31,58 @@ export const action = async ({ request }: { request: Request }) => {
 		);
 	}
 
-	const token = await sdk.auth.register("customer", "emailpass", {
-		email,
-		password,
-	});
+	let token: string | undefined;
 
-	if (typeof token !== "string") {
+	try {
+		const registerResponse = await sdk.auth.register("customer", "emailpass", {
+			email,
+			password,
+		});
+		token = typeof registerResponse === "string" ? registerResponse : undefined;
+	} catch (error) {
+		const message = String(error);
+
+		if (message.includes("Identity with email already exists")) {
+			const reclaimResponse = await fetch(
+				new URL("/store/account/reclaim-identity", baseMedusaConfig.baseUrl),
+				{
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						"x-publishable-api-key": baseMedusaConfig.publishableKey ?? "",
+					},
+					body: JSON.stringify({ email }),
+				},
+			);
+
+			if (!reclaimResponse.ok) {
+				return data(
+					{ error: "That email is already in use. Please sign in instead." },
+					{ status: 409 },
+				);
+			}
+
+			try {
+				const registerResponse = await sdk.auth.register("customer", "emailpass", {
+					email,
+					password,
+				});
+				token = typeof registerResponse === "string" ? registerResponse : undefined;
+			} catch {
+				return data(
+					{ error: "Registration failed. Please try again." },
+					{ status: 400 },
+				);
+			}
+		} else {
+			return data(
+				{ error: "Registration failed. Please try again." },
+				{ status: 400 },
+			);
+		}
+	}
+
+	if (!token) {
 		return data(
 			{ error: "Registration requires additional steps." },
 			{ status: 400 },
