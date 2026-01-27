@@ -19,6 +19,35 @@ export const baseMedusaConfig = {
   publishableKey: config.MEDUSA_PUBLISHABLE_KEY,
 };
 
+let cachedPublishableKey = baseMedusaConfig.publishableKey;
+
+export const getPublishableKey = async (): Promise<string | undefined> => {
+  if (cachedPublishableKey) {
+    return cachedPublishableKey;
+  }
+
+  try {
+    const response = await fetch(new URL('/key-exchange', baseMedusaConfig.baseUrl), {
+      headers: {
+        accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return cachedPublishableKey;
+    }
+
+    const payload = (await response.json()) as { publishableApiKey?: string };
+    if (payload?.publishableApiKey) {
+      cachedPublishableKey = payload.publishableApiKey;
+    }
+  } catch {
+    return cachedPublishableKey;
+  }
+
+  return cachedPublishableKey;
+};
+
 export const sdk = new MedusaPluginsSDK({
   ...baseMedusaConfig,
 });

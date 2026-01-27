@@ -27,6 +27,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const page = Math.max(1, Number(url.searchParams.get('page') || '1'));
   const pageSize = 10;
 
+  if (url.pathname.startsWith('/account/verify-email')) {
+    return { orders: [] as StoreOrder[], page, pageSize, totalPages: 1, totalCount: 0 };
+  }
+
   const customer = await getCustomer(request);
   if (!customer) return { orders: [] as StoreOrder[], page, pageSize, totalPages: 1, totalCount: 0 };
 
@@ -90,7 +94,13 @@ export default function AccountRoute() {
     [region?.countries],
   );
 
+  const normalizedPath = location.pathname.replace(/\/$/, '');
+  const isSubRoute = normalizedPath.startsWith('/account/') && normalizedPath !== '/account';
+
   useEffect(() => {
+    if (isSubRoute || revalidator.state !== 'idle') {
+      return;
+    }
     if (
       loginFetcher.data?.success ||
       registerFetcher.data?.success ||
@@ -116,6 +126,7 @@ export default function AccountRoute() {
     addressFetcher.data,
     addressActionFetcher.data,
     addressUpdateFetcher.data,
+    isSubRoute,
     revalidator,
   ]);
 
@@ -152,9 +163,6 @@ export default function AccountRoute() {
   }, [addressUpdateFetcher.data?.success]);
 
   const addresses = customer?.addresses ?? [];
-
-  const normalizedPath = location.pathname.replace(/\/$/, '');
-  const isSubRoute = normalizedPath.startsWith('/account/') && normalizedPath !== '/account';
 
   if (isSubRoute) {
     return <Outlet />;

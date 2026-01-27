@@ -18,7 +18,10 @@ export const Base = ({ preview, children }: BaseProps) => {
 		const storeOrigins =
 			process.env.STORE_CORS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
 		const storefrontUrl = process.env.STOREFRONT_URL?.trim() || undefined;
-		const firstOrigin = storeOrigins[0];
+		const nonLocalOrigins = storeOrigins.filter(
+			(origin) => !origin.includes("localhost") && !origin.includes("127.0.0.1"),
+		);
+		const firstOrigin = nonLocalOrigins[0] ?? storeOrigins[0];
 		const backendUrl =
 			process.env.BACKEND_PUBLIC_URL ??
 			process.env.RAILWAY_PUBLIC_DOMAIN_VALUE ??
@@ -28,6 +31,9 @@ export const Base = ({ preview, children }: BaseProps) => {
 
 	const logoUrl = (() => {
 		try {
+			if (process.env.EMAIL_LOGO_URL?.trim()) {
+				return process.env.EMAIL_LOGO_URL.trim();
+			}
 			return new URL("/assets/brand/wrs-gradient.svg", storeBaseUrl).toString();
 		} catch {
 			return "https://wellnessresearchsupply.com/assets/brand/wrs-gradient.svg";
@@ -37,9 +43,30 @@ export const Base = ({ preview, children }: BaseProps) => {
 	return (
 		<Html>
 			<Head>
+				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<style>
 					{`
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+
+            @media only screen and (max-width: 600px) {
+              .email-body {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+              }
+
+              .email-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 24px auto !important;
+                padding: 16px !important;
+                border-radius: 16px !important;
+              }
+
+              .email-button {
+                display: block !important;
+                width: 100% !important;
+              }
+            }
           `}
 				</style>
 			</Head>
@@ -67,8 +94,8 @@ export const Base = ({ preview, children }: BaseProps) => {
 					},
 				}}
 			>
-				<Body className="bg-brand-dark my-auto mx-auto font-sans px-2 text-brand-text">
-					<Container className="border border-solid border-brand-teal/20 rounded my-[40px] mx-auto p-[20px] max-w-[465px] w-full overflow-hidden bg-brand-subtle">
+				<Body className="email-body bg-brand-dark my-auto mx-auto font-sans px-2 text-brand-text">
+					<Container className="email-container border border-solid border-brand-teal/20 rounded my-[40px] mx-auto p-[20px] max-w-[465px] w-full overflow-hidden bg-brand-subtle">
 						<div className="mb-8 text-center">
 							<img
 								src={logoUrl}

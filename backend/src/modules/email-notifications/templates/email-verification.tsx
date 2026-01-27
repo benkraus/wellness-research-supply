@@ -33,7 +33,7 @@ export const EmailVerificationTemplate = ({
 
 				<Section className="mb-8">
 					<Button
-						className="bg-brand-aqua rounded text-brand-ink text-sm font-semibold no-underline px-6 py-4"
+						className="email-button bg-brand-aqua rounded text-brand-ink text-sm font-semibold no-underline px-6 py-4"
 						href={verificationLink}
 					>
 						Verify Email

@@ -49,7 +49,7 @@ export const InviteUserEmail = ({
 				</Text>
 				<Section className="mt-8 mb-[32px]">
 					<Button
-						className="bg-brand-aqua rounded text-brand-ink text-[14px] font-semibold no-underline px-6 py-4"
+						className="email-button bg-brand-aqua rounded text-brand-ink text-[14px] font-semibold no-underline px-6 py-4"
 						href={inviteLink}
 					>
 						Accept Invitation

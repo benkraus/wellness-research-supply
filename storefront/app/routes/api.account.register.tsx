@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { baseMedusaConfig, sdk } from "@libs/util/server/client.server";
+import { baseMedusaConfig, getPublishableKey, sdk } from "@libs/util/server/client.server";
 import { config } from "@libs/util/server/config.server";
 import { setAuthToken } from "@libs/util/server/cookies.server";
 import { data } from "react-router";
@@ -32,6 +32,7 @@ export const action = async ({ request }: { request: Request }) => {
 	}
 
 	let token: string | undefined;
+	const publishableKey = (await getPublishableKey()) ?? "";
 
 	const reclaimIdentity = async () => {
 		const reclaimResponse = await fetch(
@@ -40,7 +41,7 @@ export const action = async ({ request }: { request: Request }) => {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
-					"x-publishable-api-key": baseMedusaConfig.publishableKey ?? "",
+					"x-publishable-api-key": publishableKey,
 				},
 				body: JSON.stringify({ email }),
 			},
@@ -151,7 +152,7 @@ export const action = async ({ request }: { request: Request }) => {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
-					"x-publishable-api-key": baseMedusaConfig.publishableKey ?? "",
+					"x-publishable-api-key": publishableKey,
 				},
 				body: JSON.stringify({
 					email,

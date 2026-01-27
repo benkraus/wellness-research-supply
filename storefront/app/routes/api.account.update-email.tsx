@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { baseMedusaConfig } from "@libs/util/server/client.server";
+import { baseMedusaConfig, getPublishableKey } from "@libs/util/server/client.server";
 import { config } from "@libs/util/server/config.server";
 import { getCustomer, updateCustomer } from "@libs/util/server/data/customer.server";
 import { data } from "react-router";
@@ -52,11 +52,12 @@ export const action = async ({ request }: { request: Request }) => {
 	}
 
 	try {
+		const publishableKey = (await getPublishableKey()) ?? "";
 		const response = await fetch(new URL("/store/account/email-verification", baseMedusaConfig.baseUrl), {
 			method: "POST",
 			headers: {
 				"content-type": "application/json",
-				"x-publishable-api-key": baseMedusaConfig.publishableKey ?? "",
+				"x-publishable-api-key": publishableKey,
 			},
 			body: JSON.stringify({
 				email,

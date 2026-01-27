@@ -1,4 +1,4 @@
-import { baseMedusaConfig } from '@libs/util/server/client.server';
+import { baseMedusaConfig, getPublishableKey } from '@libs/util/server/client.server';
 import { data } from 'react-router';
 
 export const action = async ({ request }: { request: Request }) => {
@@ -10,11 +10,13 @@ export const action = async ({ request }: { request: Request }) => {
     return data({ error: 'Email and token are required.' }, { status: 400 });
   }
 
+  const publishableKey = (await getPublishableKey()) ?? '';
+
   const response = await fetch(new URL('/store/account/verify-email', baseMedusaConfig.baseUrl), {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-publishable-api-key': baseMedusaConfig.publishableKey ?? '',
+      'x-publishable-api-key': publishableKey,
     },
     body: JSON.stringify({ email, token }),
   });

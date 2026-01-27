@@ -65,7 +65,7 @@ export default function VerifyEmailRoute() {
 									</div>
 								)}
 
-									{warning && (
+									{warning && !pending && (
 										<div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-100">
 											<p className="font-medium">Verification email not sent</p>
 											<p className="mt-1 text-sm text-amber-100/80">
@@ -141,10 +141,21 @@ export default function VerifyEmailRoute() {
 										</fetcher.Form>
 									) : (
 										<div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-100">
-											<p className="font-medium">Verification link sent</p>
-											<p className="mt-1 text-sm text-amber-100/80">
-												Check your email and click the verification link.
-											</p>
+											{warning ? (
+												<>
+													<p className="font-medium">Verification email not sent</p>
+													<p className="mt-1 text-sm text-amber-100/80">
+														We couldn’t send your verification email. Please resend it below.
+													</p>
+												</>
+											) : (
+												<>
+													<p className="font-medium">Verification link sent</p>
+													<p className="mt-1 text-sm text-amber-100/80">
+														Check your email and click the verification link.
+													</p>
+												</>
+											)}
 											{resendFetcher.data?.error && (
 												<p className="mt-2 text-sm text-red-300">{resendFetcher.data.error}</p>
 											)}
