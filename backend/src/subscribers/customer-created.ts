@@ -43,9 +43,13 @@ export default async function customerCreatedHandler({
   container,
 }: SubscriberArgs<CustomerCreatedEvent>) {
   const customerModuleService: ICustomerModuleService = container.resolve(Modules.CUSTOMER)
-  const notificationModuleService: INotificationModuleService = container.resolve(
-    Modules.NOTIFICATION
-  )
+  let notificationModuleService: INotificationModuleService
+  try {
+    notificationModuleService = container.resolve(Modules.NOTIFICATION)
+  } catch (error) {
+    console.warn('Notification module not configured; skipping verification email.', error)
+    return
+  }
 
   const customer = await customerModuleService.retrieveCustomer(data.id)
   const metadata = (customer.metadata ?? {}) as Record<string, unknown>

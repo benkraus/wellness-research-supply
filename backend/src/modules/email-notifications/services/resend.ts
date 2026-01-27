@@ -70,9 +70,10 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
     const emailOptions = notification.data.emailOptions as NotificationEmailOptions
 
     // Compose the message body to send via API to Resend
+    const fromAddress = notification.from?.trim() ?? this.config_.from
     const message: CreateEmailOptions = {
       to: notification.to,
-      from: notification.from?.trim() ?? this.config_.from,
+      from: fromAddress,
       react: emailContent,
       subject: emailOptions.subject ?? 'You have a new notification',
       headers: emailOptions.headers,
@@ -94,18 +95,39 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
     }
 
     // Send the email via Resend
+    const formatResendError = (error: any) => {
+      const errorCode = error?.code
+      const errorStatus = error?.statusCode ?? error?.status
+      const responseBody = error?.response?.body
+      const responseError = responseBody?.errors?.[0]
+      const message = responseError?.message ?? error?.message ?? 'unknown error'
+
+      return {
+        errorCode,
+        errorStatus,
+        message,
+        responseBody,
+      }
+    }
+
+    const sendWithFrom = async (from: string) => {
+      await this.resend.emails.send({ ...message, from })
+    }
+
     try {
-      await this.resend.emails.send(message)
+      await sendWithFrom(fromAddress)
       this.logger_.log(
         `Successfully sent "${notification.template}" email to ${notification.to} via Resend`
       )
       return {} // Return an empty object on success
     } catch (error) {
-      const errorCode = error.code
-      const responseError = error.response?.body?.errors?.[0]
+      const formatted = formatResendError(error)
+      this.logger_.error(
+        `Resend error for "${notification.template}" to ${notification.to}: ${JSON.stringify(formatted)}`
+      )
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        `Failed to send "${notification.template}" email to ${notification.to} via Resend: ${errorCode} - ${responseError?.message ?? 'unknown error'}`
+        `Failed to send "${notification.template}" email to ${notification.to} via Resend: ${formatted.message}`
       )
     }
   }
