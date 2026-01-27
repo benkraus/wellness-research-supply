@@ -33,6 +33,34 @@ export const action = async ({ request }: { request: Request }) => {
 
 	let token: string | undefined;
 
+	const reclaimIdentity = async () => {
+		const reclaimResponse = await fetch(
+			new URL("/store/account/reclaim-identity", baseMedusaConfig.baseUrl),
+			{
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					"x-publishable-api-key": baseMedusaConfig.publishableKey ?? "",
+				},
+				body: JSON.stringify({ email }),
+			},
+		);
+
+		if (reclaimResponse.status === 409) {
+			return { blocked: true } as const;
+		}
+
+		return { blocked: false } as const;
+	};
+
+	const preflight = await reclaimIdentity();
+	if (preflight.blocked) {
+		return data(
+			{ error: "That email is already in use. Please sign in instead." },
+			{ status: 409 },
+		);
+	}
+
 	try {
 		const registerResponse = await sdk.auth.register("customer", "emailpass", {
 			email,
@@ -43,19 +71,8 @@ export const action = async ({ request }: { request: Request }) => {
 		const message = String(error);
 
 		if (message.includes("Identity with email already exists")) {
-			const reclaimResponse = await fetch(
-				new URL("/store/account/reclaim-identity", baseMedusaConfig.baseUrl),
-				{
-					method: "POST",
-					headers: {
-						"content-type": "application/json",
-						"x-publishable-api-key": baseMedusaConfig.publishableKey ?? "",
-					},
-					body: JSON.stringify({ email }),
-				},
-			);
-
-			if (!reclaimResponse.ok) {
+			const reclaimResult = await reclaimIdentity();
+			if (reclaimResult.blocked) {
 				return data(
 					{ error: "That email is already in use. Please sign in instead." },
 					{ status: 409 },

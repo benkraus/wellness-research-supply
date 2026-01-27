@@ -161,10 +161,10 @@ export default function AccountRoute() {
   }
 
   return (
-    <div className="bg-highlight-50 py-16 sm:py-24">
+    <div className="bg-highlight-50 py-12 sm:py-20 lg:py-24">
       <Container>
-        <div className="mx-auto max-w-4xl">
-          <div className="rounded-2xl border border-primary-900/10 bg-highlight-100 p-8 shadow-sm">
+        <div className="mx-auto max-w-3xl">
+          <div className="rounded-2xl border border-primary-900/10 bg-highlight-100 p-6 sm:p-8 shadow-sm">
             {customer?.id ? (
               <div className="space-y-10">
                 <div className="flex flex-wrap items-start justify-between gap-6">
@@ -703,19 +703,19 @@ export default function AccountRoute() {
                 )}
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h1 className="text-3xl font-display font-bold text-primary-50">
+                  <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-50">
                     {view === 'login' ? 'Sign in' : 'Create account'}
                   </h1>
                   <p className="text-primary-100 mt-2">Access your account and manage your research orders.</p>
                 </div>
 
-                <div className="flex gap-2 rounded-full bg-highlight-50 p-1 text-sm">
+                <div className="flex gap-2 rounded-full bg-highlight-50 p-1 text-xs sm:text-sm">
                   <button
                     type="button"
                     className={clsx(
-                      'flex-1 rounded-full px-4 py-2 font-medium transition',
+                      'flex-1 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 font-medium transition',
                       view === 'login' ? 'bg-primary-600 text-primary-900' : 'text-primary-100 hover:text-primary-50',
                     )}
                     onClick={() => setView('login')}
@@ -725,7 +725,7 @@ export default function AccountRoute() {
                   <button
                     type="button"
                     className={clsx(
-                      'flex-1 rounded-full px-4 py-2 font-medium transition',
+                      'flex-1 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 font-medium transition',
                       view === 'register'
                         ? 'bg-primary-600 text-primary-900'
                         : 'text-primary-100 hover:text-primary-50',

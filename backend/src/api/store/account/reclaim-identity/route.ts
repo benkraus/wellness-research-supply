@@ -54,7 +54,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   await authModuleService.updateAuthIdentities({
     id: authIdentity.id,
-    app_metadata: {},
+    app_metadata: null,
   })
 
   return res.status(200).json({ success: true, reclaimed: true })

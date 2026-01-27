@@ -33,12 +33,12 @@ export const NewsletterSubscription: FC<{ className?: string }> = ({ className }
   return (
     <div className={clsx('card flex flex-col rounded text-white', className)}>
       {fetcher.data?.success ? (
-        <Alert type="success" className="mb-2 mt-4 min-w-[280px]" title={`Thank you for subscribing!`} />
+        <Alert type="success" className="mb-2 mt-4 w-full min-w-0 sm:min-w-[280px]" title={`Thank you for subscribing!`} />
       ) : (
         <RemixFormProvider {...form}>
           <fetcher.Form onSubmit={form.handleSubmit}>
             <div className="items-end gap-2 border-b border-white">
-              <div className="flex flex-col text-white gap-5">
+              <div className="flex flex-col text-white gap-4 sm:gap-5">
                 <span className="text-lg font-bold">Newsletter</span>
                 <p className="font-light">Sign up for our newsletter to receive updates and new releases.</p>
               </div>
@@ -48,7 +48,7 @@ export const NewsletterSubscription: FC<{ className?: string }> = ({ className }
                   {...form.register('email')}
                   name="email"
                   placeholder="Enter your email"
-                  className="min-w-[220px] w-full text-white border-none rounded-none mt-2 pl-0 bg-transparent placeholder:text-white"
+                  className="w-full min-w-0 sm:min-w-[220px] text-white border-none rounded-none mt-2 pl-0 bg-transparent placeholder:text-white"
                 />
                 <SubmitButton variant="ghost" className="pr-0 pl-0">
                   <ArrowRightIcon className="w-5 h-5" />
