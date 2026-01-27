@@ -389,10 +389,10 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                       <GridColumn className="flex flex-col md:col-span-6 lg:col-span-5">
                         <div className="px-0 sm:px-6 md:p-10 md:pt-0">
                           <div>
-                            <Breadcrumbs className="mb-6 text-primary" breadcrumbs={breadcrumbs} />
+                            <Breadcrumbs className="mb-6 text-primary-200" breadcrumbs={breadcrumbs} />
 
                             <header className="flex gap-4 mb-2">
-                              <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl sm:tracking-tight">
+                              <h1 className="text-3xl font-bold tracking-tight text-primary-50 sm:text-4xl sm:tracking-tight">
                                 {product.title}
                               </h1>
                               <div className="flex-1" />
@@ -411,12 +411,12 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
 
                           <ProductReviewStars reviewsCount={reviewsCount} reviewStats={reviewStats} />
 
-                          <section aria-labelledby="product-information" className="mt-4">
+                          <section aria-labelledby="product-information" className="mt-5">
                             <h2 id="product-information" className="sr-only">
                               Product information
                             </h2>
 
-                            <p className="text-lg text-gray-900 sm:text-xl flex gap-3">
+                            <p className="text-lg text-primary-50 sm:text-xl flex gap-3">
                               {selectedVariant ? (
                                 <ProductPrice product={product} variant={selectedVariant} currencyCode={currencyCode} />
                               ) : (
@@ -446,13 +446,13 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                           )}
 
                           {productSelectOptions && productSelectOptions.length <= 5 && (
-                            <section aria-labelledby="product-options" className="product-options my-6 grid gap-4">
+                            <section aria-labelledby="product-options" className="product-options my-8 grid gap-4">
                               <h2 id="product-options" className="sr-only">
                                 Product options
                               </h2>
                               {productSelectOptions.map((option, optionIndex) => (
                                 <div key={optionIndex}>
-                                  <FieldLabel className="mb-2">{option.title}</FieldLabel>
+                                  <FieldLabel className="mb-2 text-primary-200">{option.title}</FieldLabel>
                                   <ProductOptionSelectorRadio
                                     option={option}
                                     value={controlledOptions[option.id]}
@@ -469,13 +469,13 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                               {!soldOut && <QuantitySelector variant={selectedVariant} />}
                               <div className="flex-1">
                                 {!soldOut ? (
-                                  <SubmitButton className="!h-12 w-full whitespace-nowrap !text-base !font-bold">
+                                  <SubmitButton className="!h-12 w-full whitespace-nowrap !text-base !font-bold bg-primary-500 hover:bg-primary-400 text-primary-900 shadow-[0_10px_30px_-20px_rgba(45,212,191,0.7)]">
                                     {isAddingToCart ? 'Adding...' : 'Add to cart'}
                                   </SubmitButton>
                                 ) : (
                                   <SubmitButton
                                     disabled
-                                    className="pointer-events-none !h-12 w-full !text-base !font-bold opacity-50"
+                                    className="pointer-events-none !h-12 w-full !text-base !font-bold !opacity-100 bg-highlight-100/35 border border-primary-300/30 text-primary-200/80 shadow-none"
                                   >
                                     Sold out
                                   </SubmitButton>
@@ -485,8 +485,8 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
 
                             {!!product.description && (
                               <div className="mt-4">
-                                <h3 className="mb-2">Description</h3>
-                                <div className="whitespace-pre-wrap text-base text-primary-800">
+                                <h3 className="mb-2 text-primary-200">Description</h3>
+                                <div className="whitespace-pre-wrap text-base text-primary-200">
                                   {product.description}
                                 </div>
                               </div>
@@ -494,9 +494,9 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
 
                             {product.categories && product.categories.length > 0 && (
                               <nav aria-label="Categories" className="mt-4">
-                                <h3 className="mb-2">Categories</h3>
+                                <h3 className="mb-2 text-primary-200">Categories</h3>
 
-                                <ol className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                <ol className="flex flex-wrap items-center gap-2 text-xs text-primary-200">
                                   {product.categories.map((category, categoryIndex) => (
                                     <li key={categoryIndex}>
                                       <Button
@@ -515,9 +515,9 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
 
                             {product.tags && product.tags.length > 0 && (
                               <nav aria-label="Tags" className="mt-4">
-                                <h3 className="mb-2">Tags</h3>
+                                <h3 className="mb-2 text-primary-200">Tags</h3>
 
-                                <ol className="flex flex-wrap items-center gap-2 text-xs text-primary">
+                                <ol className="flex flex-wrap items-center gap-2 text-xs text-primary-200">
                                   {product.tags.map((tag, tagIndex) => (
                                     <li key={tagIndex}>
                                       <Button className="!h-auto whitespace-nowrap !rounded !px-2 !py-1 !text-xs !font-bold bg-accent-900 cursor-default">

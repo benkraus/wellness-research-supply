@@ -15,6 +15,8 @@ export const fetchProductReviews = async (
   query: Partial<StoreListProductReviewsQuery> = {},
   cacheOptions: { forceFresh?: boolean } = {},
 ) => {
+  const offset = query.offset ?? 0;
+  const limit = query.limit ?? 10;
   return await cachified({
     key: `product-reviews-${JSON.stringify(query)}`,
     cache: sdkCache,
@@ -22,23 +24,55 @@ export const fetchProductReviews = async (
     ttl: MILLIS.TEN_SECONDS,
     forceFresh: cacheOptions.forceFresh,
     async getFreshValue() {
-      return await sdk.store.productReviews.list({
-        ...query,
-        offset: query.offset ?? 0,
-        limit: query.limit ?? 10,
-      });
+      try {
+        return await sdk.store.productReviews.list({
+          ...query,
+          offset,
+          limit,
+        });
+      } catch (error: any) {
+        const status = error?.status ?? error?.response?.status;
+        if (status === 404 || error?.message?.includes('Not Found')) {
+          return {
+            product_reviews: [],
+            count: 0,
+            offset,
+            limit,
+          };
+        }
+
+        throw error;
+      }
     },
   });
 };
 
-export const fetchProductReviewStats = async (query: StoreListProductReviewStatsQuery = { offset: 0, limit: 10 }) => {
+export const fetchProductReviewStats = async (
+  query: StoreListProductReviewStatsQuery = { offset: 0, limit: 10 },
+) => {
+  const offset = query.offset ?? 0;
+  const limit = query.limit ?? 10;
   return await cachified({
     key: `product-review-stats-${JSON.stringify(query)}`,
     cache: sdkCache,
     staleWhileRevalidate: MILLIS.ONE_HOUR,
     ttl: MILLIS.TEN_SECONDS,
     async getFreshValue() {
-      return await sdk.store.productReviews.listStats(query);
+      try {
+        return await sdk.store.productReviews.listStats({ ...query, offset, limit });
+      } catch (error: any) {
+        const status = error?.status ?? error?.response?.status;
+        if (status === 404 || error?.message?.includes('Not Found')) {
+          return {
+            product_review_stats: [],
+            count: 0,
+            offset,
+            limit,
+          };
+        }
+
+        throw error;
+      }
     },
   });
 };

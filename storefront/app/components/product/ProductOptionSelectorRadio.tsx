@@ -82,9 +82,11 @@ export const ProductOptionSelectorRadio: FC<ProductOptionSelectorProps> = ({
               className={({ checked, disabled }) =>
                 clsx(
                   'group',
-                  checked ? 'ring-primary-300 ring-1 bg-highlight' : 'bg-white border-primary-300',
-                  'active:ring-primary-300 relative col-span-1 flex h-full cursor-pointer flex-col justify-between rounded-lg border px-3 py-2 font-bold shadow-sm hover:bg-highlight/40 focus:outline-none',
-                  disabled ? 'opacity-50' : '',
+                  checked
+                    ? 'border-primary-400/90 bg-primary-500/25 ring-2 ring-primary-300/80 shadow-[0_12px_30px_-18px_rgba(45,212,191,0.85)]'
+                    : 'border-primary-200/30 bg-highlight-100/10 hover:border-primary-300/60 hover:bg-highlight-100/20',
+                  'relative col-span-1 flex h-full cursor-pointer flex-col justify-between rounded-lg border px-3 py-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-300/40',
+                  disabled ? 'opacity-45 cursor-not-allowed' : '',
                 )
               }
             >
@@ -92,23 +94,25 @@ export const ProductOptionSelectorRadio: FC<ProductOptionSelectorProps> = ({
                 <Label as="div" className="flex items-center w-full">
                   {/* Option value on the left */}
                   <div className="flex-grow">
-                    <span className={clsx('text-base', checked ? 'text-primary-800' : 'text-gray-900')}>
+                    <span className={clsx('text-base', checked ? 'text-primary-50' : 'text-primary-100/90')}>
                       {optionValue.value}
                     </span>
-                    {optionValue.disabled && <span className="text-xs text-gray-500 ml-2">(not available)</span>}
+                    {optionValue.disabled && (
+                      <span className="text-xs text-primary-200/70 ml-2">(not available)</span>
+                    )}
                   </div>
 
                   {/* Price information and check icon on the right */}
                   <div className="flex items-center">
                     {priceDisplay && (
                       <div className="text-right">
-                        <span className="text-sm font-normal text-gray-500">{priceDisplay}</span>
+                        <span className="text-sm font-normal text-primary-200/90">{priceDisplay}</span>
                         {discountDisplay && (
-                          <span className="ml-1 text-xs font-medium text-green-600">({discountDisplay})</span>
+                          <span className="ml-1 text-xs font-medium text-emerald-200">({discountDisplay})</span>
                         )}
                       </div>
                     )}
-                    {checked && <CheckCircleIcon className="text-primary-600 h-5 w-5 ml-2" aria-hidden="true" />}
+                    {checked && <CheckCircleIcon className="text-primary-100 h-5 w-5 ml-2" aria-hidden="true" />}
                   </div>
                 </Label>
               )}

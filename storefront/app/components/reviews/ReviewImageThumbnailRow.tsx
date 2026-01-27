@@ -25,7 +25,7 @@ const GalleryImagesRow: FC<{ galleryImages: GalleryImage[]; onClick?: (index: nu
               if (typeof onClick === 'function') onClick(imageIndex);
             }}
             key={image.url}
-            className="group relative flex h-24 w-24 flex-shrink-0 cursor-pointer justify-center overflow-hidden rounded-md border border-gray-100 bg-white text-sm font-bold uppercase text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-1"
+            className="group relative flex h-24 w-24 flex-shrink-0 cursor-pointer justify-center overflow-hidden rounded-md border border-primary-200/30 bg-highlight-100/50 text-sm font-bold uppercase text-primary-50 hover:bg-highlight-100/70 focus:outline-none focus:ring-1 focus:ring-primary-300/40"
           >
             <Image
               src={image.url}

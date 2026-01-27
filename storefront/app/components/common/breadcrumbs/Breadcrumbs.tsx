@@ -15,7 +15,7 @@ export interface BreadcrumbsProps {
 
 export const Breadcrumbs: FC<BreadcrumbsProps> = ({ breadcrumbs, className }) => (
   <nav aria-label="Breadcrumb" className={clsx('breadcrumbs', className)}>
-    <ol className="flex flex-wrap items-center gap-2.5 text-sm leading-none text-gray-300 md:mt-0">
+    <ol className="flex flex-wrap items-center gap-2.5 text-sm leading-none text-primary-200 md:mt-0">
       {breadcrumbs.map((breadcrumb, breadcrumbIdx) => (
         <Fragment key={breadcrumbIdx}>
           <li>
@@ -25,12 +25,12 @@ export const Breadcrumbs: FC<BreadcrumbsProps> = ({ breadcrumbs, className }) =>
                 as={(buttonProps) => (
                   <Link viewTransition prefetch="viewport" {...buttonProps} to={breadcrumb.url || ''} />
                 )}
-                className="!text-gray-500 no-underline hover:!text-gray-700 hover:underline"
+                className="!text-primary-200 no-underline hover:!text-primary-50 hover:underline"
               >
                 {breadcrumb.label}
               </ButtonLink>
             ) : (
-              <span className="font-bold text-gray-500">{breadcrumb.label}</span>
+              <span className="font-bold text-primary-200">{breadcrumb.label}</span>
             )}
           </li>
           {breadcrumbIdx !== breadcrumbs.length - 1 && <li>/</li>}

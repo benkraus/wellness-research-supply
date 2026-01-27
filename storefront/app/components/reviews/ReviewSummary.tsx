@@ -14,28 +14,31 @@ const ReviewRating: FC<{ rating: number; rating_count: number; count: number }> 
   return (
     <div key={rating} className="flex items-center text-sm">
       <dt className="flex flex-1 items-center">
-        <p className="w-3 font-medium text-gray-900">
+        <p className="w-3 font-medium text-primary-50">
           {rating}
           <span className="sr-only"> star reviews</span>
         </p>
         <div aria-hidden="true" className="ml-1 flex flex-1 items-center">
           <StarIcon
-            className={clsx(count > 0 ? 'text-amber-400' : 'text-gray-300', 'h-5 w-5 flex-shrink-0')}
+            className={clsx(
+              count > 0 ? 'text-amber-300' : 'text-primary-200/40',
+              'h-5 w-5 flex-shrink-0',
+            )}
             aria-hidden="true"
           />
 
           <div className="relative ml-3 flex-1">
-            <div className="h-3 rounded-full border border-gray-200 bg-gray-100" />
+            <div className="h-3 rounded-full border border-primary-200/25 bg-highlight-100/60" />
             {count > 0 ? (
               <div
-                className="absolute inset-y-0 rounded-full border border-amber-400 bg-amber-400"
+                className="absolute inset-y-0 rounded-full border border-primary-400/80 bg-primary-400/80"
                 style={{ width: `calc(${rating_count} / ${count} * 100%)` }}
               />
             ) : null}
           </div>
         </div>
       </dt>
-      <dd className="ml-3 w-10 text-right text-sm tabular-nums text-gray-900">
+      <dd className="ml-3 w-10 text-right text-sm tabular-nums text-primary-50">
         {Math.round((rating_count / count) * 100)}%
       </dd>
     </div>
@@ -47,7 +50,7 @@ export const ProductReviewSummary: FC<ProductReviewSummaryProps> = ({ stats, cou
     <div className={className}>
       {stats && (
         <>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Customer Reviews</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-primary-50">Customer Reviews</h2>
 
           <div className="mt-3 flex items-center">
             <div>
@@ -56,7 +59,7 @@ export const ProductReviewSummary: FC<ProductReviewSummaryProps> = ({ stats, cou
               </div>
               <p className="sr-only">{stats.average_rating} out of 5 stars</p>
             </div>
-            <p className="ml-2 mt-1 text-sm text-gray-900">
+            <p className="ml-2 mt-1 text-sm text-primary-200">
               Based on {count} review{count > 1 && 's'}
             </p>
           </div>

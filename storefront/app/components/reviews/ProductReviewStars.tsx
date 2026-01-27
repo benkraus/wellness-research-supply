@@ -12,10 +12,10 @@ export const ProductReviewStars: FC<ProductReviewStarsProps> = ({ reviewsCount, 
   if (!reviewsCount || reviewsCount < 1) return null;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 text-primary-200">
       <StarRating value={reviewStats?.average_rating || 0} readOnly />
 
-      <Link to="#reviews" className="ml-1 mt-[1px] flex text-xs">
+      <Link to="#reviews" className="ml-1 mt-[1px] flex text-xs text-primary-200 hover:text-primary-50">
         <div className="mr-1 hover:underline">
           {' '}
           {reviewsCount} Review{reviewsCount > 1 ? 's' : ''}

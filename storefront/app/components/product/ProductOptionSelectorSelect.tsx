@@ -73,7 +73,7 @@ export const ProductOptionSelectorSelect: FC<ProductOptionSelectorProps> = ({
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={option.id} className="text-sm font-medium text-gray-700">
+      <label htmlFor={option.id} className="text-sm font-medium text-primary-200">
         {option.title}
       </label>
       <select

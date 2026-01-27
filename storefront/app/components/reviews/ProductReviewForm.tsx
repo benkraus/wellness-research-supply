@@ -103,11 +103,11 @@ export const ProductReviewForm: FC<ProductReviewFormProps> = ({
 
         <div className="flex flex-wrap justify-between gap-4">
           <div>
-            <h3 className="text-base text-gray-900">
+            <h3 className="text-base text-primary-50">
               <Link to={`/products/${lineItem.variant?.product?.handle}`}>{lineItem.title}</Link>
             </h3>
 
-            <p className="text-sm font-normal text-gray-500">{lineItem.variant?.title}</p>
+            <p className="text-sm font-normal text-primary-200">{lineItem.variant?.title}</p>
           </div>
 
           <div>

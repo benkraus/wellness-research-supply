@@ -26,7 +26,7 @@ const GalleryImagesRow: FC<{ galleryImages: ProductGalleryImage[] }> = memo(({ g
         <Tab
           key={image.id}
           className={
-            'relative mb-0 mr-2 inline-block h-16 w-16 cursor-pointer snap-start whitespace-nowrap rounded-md bg-white text-sm font-bold uppercase text-gray-900 last:mb-0 last:mr-0 hover:bg-gray-50 focus:outline-none focus:ring-0 lg:mb-2 lg:mr-0 lg:whitespace-normal'
+            'relative mb-0 mr-2 inline-block h-16 w-16 cursor-pointer snap-start whitespace-nowrap rounded-md bg-highlight-100/50 text-sm font-bold uppercase text-primary-50 last:mb-0 last:mr-0 hover:bg-highlight-100/70 focus:outline-none focus:ring-0 lg:mb-2 lg:mr-0 lg:whitespace-normal'
           }
         >
           {({ selected }) => (
@@ -41,8 +41,8 @@ const GalleryImagesRow: FC<{ galleryImages: ProductGalleryImage[] }> = memo(({ g
                 />
               </span>
               <span
-                className={clsx('pointer-events-none absolute inset-0 rounded-md border border-gray-200', {
-                  '!border-primary-500 border-2': selected,
+                className={clsx('pointer-events-none absolute inset-0 rounded-md border border-primary-200/30', {
+                  '!border-primary-400 border-2': selected,
                 })}
                 aria-hidden="true"
               />
@@ -120,15 +120,15 @@ export const ProductImageGallery: FC<ProductImageGalleryProps> = ({ product }) =
                   }}
                   src={image.url}
                   alt={image.alt || 'selected image for product'}
-                  className="absolute h-full w-full border-b border-b-gray-200 object-contain object-center sm:rounded-md sm:border sm:border-gray-200"
+                  className="absolute h-full w-full border-b border-b-primary-200/20 object-contain object-center sm:rounded-md sm:border sm:border-primary-200/20"
                 />
-                <div className="absolute right-2 top-2 flex items-center justify-center rounded-xl bg-gray-800 p-2 opacity-0 transition-all hover:!opacity-75 active:!opacity-95 group-hover:opacity-50">
-                  <MagnifyingGlassPlusIcon className="h-6 w-6 text-white" />
+                <div className="absolute right-2 top-2 flex items-center justify-center rounded-xl bg-highlight-900/70 p-2 opacity-0 transition-all hover:!opacity-80 active:!opacity-95 group-hover:opacity-60">
+                  <MagnifyingGlassPlusIcon className="h-6 w-6 text-primary-50" />
                 </div>
               </TabPanel>
             ))
           ) : (
-            <div className="absolute flex h-full w-full items-center justify-center border-b border-b-gray-200 object-cover object-center sm:rounded-md sm:border sm:border-gray-200">
+            <div className="absolute flex h-full w-full items-center justify-center border-b border-b-primary-200/20 object-cover object-center sm:rounded-md sm:border sm:border-primary-200/20 text-primary-200">
               No Image
             </div>
           )}

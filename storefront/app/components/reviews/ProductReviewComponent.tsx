@@ -24,7 +24,7 @@ export const ProductReviewComponent: FC<ProductReviewProps> = ({ lineItem, produ
           <Image
             src={lineItem.thumbnail}
             alt={lineItem.title}
-            className=" h-24 w-24 flex-none rounded-md bg-gray-100 object-cover object-center"
+            className=" h-24 w-24 flex-none rounded-md bg-highlight-100/60 object-cover object-center"
           />
         </div>
       )}

@@ -10,7 +10,7 @@ export interface IconButtonProps extends ButtonBaseProps {
 export const IconButton: FC<IconButtonProps> = ({ icon: Icon, className, iconProps, ...props }) => (
   <ButtonBase
     className={clsx(
-      'icon-button inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-none text-gray-500 placeholder:bg-transparent hover:bg-gray-100 hover:text-gray-700 focus:text-gray-700',
+      'icon-button inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-primary-200/20 text-primary-200 placeholder:bg-transparent hover:bg-highlight-100/60 hover:text-primary-50 focus:text-primary-50',
       className,
     )}
     {...props}

@@ -23,7 +23,7 @@ export const ProductReviewList: FC<ProductReviewListProps> = ({ productReviews }
   return (
     <div>
       {productReviews && productReviews.length > 0 && (
-        <div className="-my-12 divide-y divide-gray-200">
+        <div className="-my-12 divide-y divide-primary-200/15">
           {productReviews.map((review, reviewIndex) => {
             const galleryImages = (review.images || []).map((image) => ({
               url: image.url,
@@ -34,18 +34,18 @@ export const ProductReviewList: FC<ProductReviewListProps> = ({ productReviews }
             return (
               <div key={review.id} className="py-8">
                 <div className=" flex items-center justify-between">
-                  <h3 className="mr-2 text-sm font-bold ">{review.name ?? 'Anonymous'}</h3>
+                  <h3 className="mr-2 text-sm font-bold text-primary-50">{review.name ?? 'Anonymous'}</h3>
                   <div className="mt-1 flex items-center pb-1">
                     <StarRating value={review.rating ?? 0} readOnly />
                   </div>
                   <p className="sr-only">{review.rating} out of 5 stars</p>
                 </div>
-                <time className="text-xs italic text-gray-900" dateTime={review.created_at}>
+                <time className="text-xs italic text-primary-200" dateTime={review.created_at}>
                   {formatDate(new Date(review.created_at))}
                 </time>
 
                 <div
-                  className="mt-4 space-y-6 text-base italic text-gray-600"
+                  className="mt-4 space-y-6 text-base italic text-primary-200"
                   dangerouslySetInnerHTML={{ __html: review.content }}
                 />
 
@@ -58,12 +58,12 @@ export const ProductReviewList: FC<ProductReviewListProps> = ({ productReviews }
 
                 {/* Store Owner Response */}
                 {review.response && review.response.content && (
-                  <div className="mt-4 rounded-md bg-gray-50 p-4">
+                  <div className="mt-4 rounded-md bg-highlight-100/60 p-4 border border-primary-200/20">
                     <div className="flex items-center">
-                      <h4 className="text-sm font-medium text-gray-900">Our Response</h4>
+                      <h4 className="text-sm font-medium text-primary-50">Our Response</h4>
                       {review.response.created_at && (
                         <time
-                          className="ml-2 text-xs italic text-gray-500"
+                          className="ml-2 text-xs italic text-primary-200/80"
                           dateTime={String(review.response.created_at)}
                         >
                           {formatDate(new Date(review.response.created_at))}
@@ -71,7 +71,7 @@ export const ProductReviewList: FC<ProductReviewListProps> = ({ productReviews }
                       )}
                     </div>
                     <div
-                      className="mt-2 text-sm text-gray-700"
+                      className="mt-2 text-sm text-primary-200"
                       dangerouslySetInnerHTML={{ __html: review.response.content }}
                     />
                   </div>
