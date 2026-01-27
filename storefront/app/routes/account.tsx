@@ -3,7 +3,7 @@ import { Container } from '@app/components/common/container/Container';
 import { Input } from '@app/components/common/forms/inputs/Input';
 import { useCustomer } from '@app/hooks/useCustomer';
 import { useRegion } from '@app/hooks/useRegion';
-import { formatDate, formatPrice, medusaAddressToAddress } from '@libs/util';
+import { applyPhoneInputFormatting, formatDate, formatPrice, medusaAddressToAddress } from '@libs/util';
 import { getCustomer } from '@libs/util/server/data/customer.server';
 import { listOrdersWithCount } from '@libs/util/server/data/orders.server';
 import type { StoreOrder } from '@medusajs/types';
@@ -250,6 +250,9 @@ export default function AccountRoute() {
                             type="tel"
                             defaultValue={customer.phone || ''}
                             placeholder="Phone (optional)"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
                             className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
                           />
                           {profileFetcher.data?.error && (
@@ -447,6 +450,9 @@ export default function AccountRoute() {
                                       type="tel"
                                       placeholder="Phone (optional)"
                                       defaultValue={address.phone || ''}
+                                      inputMode="tel"
+                                      autoComplete="tel"
+                                      onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
                                       className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
                                     />
                                     <Input
@@ -566,6 +572,9 @@ export default function AccountRoute() {
                             name="address.phone"
                             type="tel"
                             placeholder="Phone (optional)"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
                             className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
                           />
                           <Input
@@ -804,6 +813,9 @@ export default function AccountRoute() {
                       name="phone"
                       type="tel"
                       placeholder="Phone (optional)"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
                       className="bg-highlight-50 text-primary-50 placeholder:text-primary-200"
                     />
                     <Input

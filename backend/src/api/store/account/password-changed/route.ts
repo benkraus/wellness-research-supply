@@ -1,6 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework'
-import type { IEventBusModuleService } from '@medusajs/framework/types'
+import type { INotificationModuleService } from '@medusajs/framework/types'
 import { Modules } from '@medusajs/framework/utils'
+import { ACCOUNT_FROM_EMAIL, BACKEND_URL, STORE_CORS } from '../../../../lib/constants'
+import { EmailTemplates } from '../../../../modules/email-notifications/templates'
 
 type PasswordChangedRequestBody = {
   email: string
@@ -18,17 +20,33 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json({ error: 'Contact URL must be a string.' })
   }
 
-  const eventBus: IEventBusModuleService = req.scope.resolve(Modules.EVENT_BUS)
+  const notificationModuleService: INotificationModuleService = req.scope.resolve(
+    Modules.NOTIFICATION
+  )
 
-  await eventBus.emit([
-    {
-      name: 'customer.password_changed',
+  const storeOrigins = STORE_CORS?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? []
+  const storeBaseUrl = storeOrigins.find(Boolean) ?? BACKEND_URL
+  const resolvedContactUrl = contactUrl ?? `${storeBaseUrl}/support`
+
+  try {
+    await notificationModuleService.createNotifications({
+      to: email,
+      channel: 'email',
+      from: ACCOUNT_FROM_EMAIL,
+      template: EmailTemplates.PASSWORD_CHANGED,
       data: {
-        email,
-        contactUrl,
+        emailOptions: {
+          replyTo: ACCOUNT_FROM_EMAIL,
+          subject: 'Your Wellness Research Supply password was changed',
+        },
+        contactUrl: resolvedContactUrl,
+        preview: 'Your password has been changed',
       },
-    },
-  ])
+    })
+  } catch (error) {
+    console.error('Error sending password changed notification:', error)
+    return res.status(500).json({ error: 'Unable to send password change email.' })
+  }
 
   return res.status(200).json({ success: true })
 }

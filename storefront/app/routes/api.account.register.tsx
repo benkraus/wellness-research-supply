@@ -3,6 +3,7 @@ import { baseMedusaConfig, getPublishableKey, sdk } from "@libs/util/server/clie
 import { config } from "@libs/util/server/config.server";
 import { setAuthToken } from "@libs/util/server/cookies.server";
 import { data } from "react-router";
+import { normalizePhoneNumber } from "@libs/util/phoneNumber";
 
 const getStorefrontUrl = (request: Request) => {
 	return config.STOREFRONT_URL ?? new URL(request.url).origin;
@@ -16,6 +17,7 @@ export const action = async ({ request }: { request: Request }) => {
 	const firstName = String(formData.get("first_name") || "").trim();
 	const lastName = String(formData.get("last_name") || "").trim();
 	const phone = String(formData.get("phone") || "").trim();
+	const normalizedPhone = normalizePhoneNumber(phone);
 
 	if (!email || !password || !firstName || !lastName) {
 		return data(
@@ -115,7 +117,7 @@ export const action = async ({ request }: { request: Request }) => {
 			email,
 			first_name: firstName,
 			last_name: lastName,
-			phone: phone || undefined,
+			phone: normalizedPhone || undefined,
 		},
 		{},
 		{

@@ -1,4 +1,5 @@
 import { StyledTextField } from '@app/components/common/remix-hook-form/forms/fields/StyledTextField';
+import { applyPhoneInputFormatting } from '@libs/util';
 import clsx from 'clsx';
 import { useRemixFormContext } from 'remix-hook-form';
 
@@ -18,7 +19,15 @@ export const AddressFormFields = ({ prefix, countryOptions, className }: Address
       <StyledTextField name={`${prefix}.lastName`} label="Last name" placeholder="Last name" />
 
       <StyledTextField name={`${prefix}.company`} label="Company (optional)" placeholder="Company" />
-      <StyledTextField name={`${prefix}.phone`} label="Phone (optional)" placeholder="Phone" />
+      <StyledTextField
+        name={`${prefix}.phone`}
+        label="Phone (optional)"
+        placeholder="Phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
+      />
 
       <StyledTextField
         name={`${prefix}.address1`}

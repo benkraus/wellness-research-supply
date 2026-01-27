@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework'
-import type { ICustomerModuleService, IEventBusModuleService } from '@medusajs/framework/types'
+import type { ICustomerModuleService, INotificationModuleService } from '@medusajs/framework/types'
 import { Modules } from '@medusajs/framework/utils'
-import { BACKEND_URL, STORE_CORS } from '../../../../lib/constants'
+import { ACCOUNT_FROM_EMAIL, BACKEND_URL, STORE_CORS } from '../../../../lib/constants'
+import { EmailTemplates } from '../../../../modules/email-notifications/templates'
 
 type ResendVerificationRequestBody = {
   email: string
@@ -31,7 +32,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 
   const customerModuleService: ICustomerModuleService = req.scope.resolve(Modules.CUSTOMER)
-  const eventBus: IEventBusModuleService = req.scope.resolve(Modules.EVENT_BUS)
+  const notificationModuleService: INotificationModuleService = req.scope.resolve(
+    Modules.NOTIFICATION
+  )
 
   const customers = await customerModuleService.listCustomers({ email })
   const customer = customers[0]
@@ -69,16 +72,25 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     },
   })
 
-  await eventBus.emit([
-    {
-      name: 'customer.email_verification',
+  try {
+    await notificationModuleService.createNotifications({
+      to: email,
+      channel: 'email',
+      from: ACCOUNT_FROM_EMAIL,
+      template: EmailTemplates.EMAIL_VERIFICATION,
       data: {
-        email,
-        token,
+        emailOptions: {
+          replyTo: ACCOUNT_FROM_EMAIL,
+          subject: 'Verify your Wellness Research Supply email',
+        },
         verificationLink: verificationUrl.toString(),
+        preview: 'Verify your email address',
       },
-    },
-  ])
+    })
+  } catch (error) {
+    console.error('Error resending verification notification:', error)
+    return res.status(500).json({ error: 'Unable to send verification email.' })
+  }
 
   return res.status(200).json({ success: true })
 }

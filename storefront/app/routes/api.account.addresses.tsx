@@ -1,4 +1,5 @@
 import { addressPayload, addressToMedusaAddress } from '@libs/util/addresses';
+import { normalizePhoneNumber } from '@libs/util/phoneNumber';
 import { baseMedusaConfig, sdk } from '@libs/util/server/client.server';
 import { getAuthHeaders } from '@libs/util/server/auth.server';
 import { getCustomer } from '@libs/util/server/data/customer.server';
@@ -17,7 +18,7 @@ const buildAddressFromForm = (formData: FormData, prefix = 'address') => {
     province: getValue('province'),
     countryCode: getValue('countryCode'),
     postalCode: getValue('postalCode'),
-    phone: getValue('phone'),
+    phone: normalizePhoneNumber(getValue('phone')) || getValue('phone'),
   };
 };
 

@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addressPayload, addressToMedusaAddress } from '@libs/util/addresses';
+import { normalizePhoneNumber } from '@libs/util/phoneNumber';
 import { removeCartId } from '@libs/util/server/cookies.server';
 import { initiatePaymentSession, placeOrder, retrieveCart, updateCart } from '@libs/util/server/data/cart.server';
 import type { StoreCart } from '@medusajs/types';
@@ -74,7 +75,12 @@ export async function action(actionArgs: ActionFunctionArgs) {
 
   let cart = (await retrieveCart(actionArgs.request)) as StoreCart;
 
-  const billingAddress = data.sameAsShipping ? cart.shipping_address : addressToMedusaAddress(data.billingAddress);
+  const billingAddress = data.sameAsShipping
+    ? cart.shipping_address
+    : addressToMedusaAddress({
+        ...data.billingAddress,
+        phone: normalizePhoneNumber(data.billingAddress.phone ?? '') ?? data.billingAddress.phone,
+      });
 
   cart = (
     await updateCart(actionArgs.request, {
@@ -91,8 +97,8 @@ export async function action(actionArgs: ActionFunctionArgs) {
     if (venmoContact.includes('@')) {
       paymentSessionData = { venmo_target: { email: venmoContact } };
     } else {
-      const digits = venmoContact.replace(/\D/g, '');
-      paymentSessionData = { venmo_target: { phone: digits || venmoContact } };
+      const normalizedVenmo = normalizePhoneNumber(venmoContact);
+      paymentSessionData = { venmo_target: { phone: normalizedVenmo ?? venmoContact } };
     }
   }
 

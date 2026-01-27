@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addressToMedusaAddress } from '@libs/util';
+import { normalizePhoneNumber } from '@libs/util/phoneNumber';
 import { updateCart } from '@libs/util/server/data/cart.server';
 import type { ActionFunctionArgs } from 'react-router';
 import { data as remixData } from 'react-router';
@@ -38,7 +39,10 @@ export async function action(actionArgs: ActionFunctionArgs) {
     return remixData({ errors }, { status: 400 });
   }
 
-  const formattedShippingAddress = addressToMedusaAddress(data.shippingAddress);
+  const formattedShippingAddress = addressToMedusaAddress({
+    ...data.shippingAddress,
+    phone: normalizePhoneNumber(data.shippingAddress.phone ?? '') ?? data.shippingAddress.phone,
+  });
 
   const { cart } = await updateCart(actionArgs.request, {
     email: data.email,

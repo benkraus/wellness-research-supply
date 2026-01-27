@@ -14,6 +14,10 @@ interface BaseProps {
 }
 
 export const Base = ({ preview, children }: BaseProps) => {
+	const defaultStorefrontBaseUrl =
+		process.env.EMAIL_STOREFRONT_BASE_URL?.trim() ||
+		"https://storefront-production-3cb7.up.railway.app";
+
 	const storeBaseUrl = (() => {
 		const storeOrigins =
 			process.env.STORE_CORS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
@@ -26,7 +30,22 @@ export const Base = ({ preview, children }: BaseProps) => {
 			process.env.BACKEND_PUBLIC_URL ??
 			process.env.RAILWAY_PUBLIC_DOMAIN_VALUE ??
 			"http://localhost:9000";
-		return storefrontUrl ?? firstOrigin ?? backendUrl;
+		const candidate = storefrontUrl ?? firstOrigin ?? backendUrl;
+
+		try {
+			const host = new URL(candidate).host;
+			const isLocal =
+				host.includes("localhost") ||
+				host.includes("127.0.0.1") ||
+				host.endsWith(".internal") ||
+				host.includes("railway.internal");
+			if (isLocal) {
+				return defaultStorefrontBaseUrl;
+			}
+			return candidate;
+		} catch {
+			return defaultStorefrontBaseUrl;
+		}
 	})();
 
 	const logoUrl = (() => {
@@ -35,7 +54,7 @@ export const Base = ({ preview, children }: BaseProps) => {
 			return explicit;
 		}
 
-		const fallback = "https://wellnessresearchsupply.com/assets/brand/wrs-gradient.png";
+		const fallback = new URL("/assets/brand/wrs-gradient.png", defaultStorefrontBaseUrl).toString();
 
 		try {
 			const host = new URL(storeBaseUrl).host;
