@@ -1,8 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa'
 
-export default async function customerCreatedHandler({
-  _: SubscriberArgs<{ id: string }>
-) {
+export default async function customerCreatedHandler(_: SubscriberArgs<{ id: string }>) {
   return
 }
 
