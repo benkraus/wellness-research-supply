@@ -30,13 +30,26 @@ export const Base = ({ preview, children }: BaseProps) => {
 	})();
 
 	const logoUrl = (() => {
+		const explicit = process.env.EMAIL_LOGO_URL?.trim();
+		if (explicit) {
+			return explicit;
+		}
+
+		const fallback = "https://wellnessresearchsupply.com/assets/brand/wrs-gradient.png";
+
 		try {
-			if (process.env.EMAIL_LOGO_URL?.trim()) {
-				return process.env.EMAIL_LOGO_URL.trim();
+			const host = new URL(storeBaseUrl).host;
+			const isLocal =
+				host.includes("localhost") ||
+				host.includes("127.0.0.1") ||
+				host.endsWith(".internal") ||
+				host.includes("railway.internal");
+			if (isLocal) {
+				return fallback;
 			}
-			return new URL("/assets/brand/wrs-gradient.svg", storeBaseUrl).toString();
+			return new URL("/assets/brand/wrs-gradient.png", storeBaseUrl).toString();
 		} catch {
-			return "https://wellnessresearchsupply.com/assets/brand/wrs-gradient.svg";
+			return fallback;
 		}
 	})();
 
@@ -95,14 +108,14 @@ export const Base = ({ preview, children }: BaseProps) => {
 				}}
 			>
 				<Body className="email-body bg-brand-dark my-auto mx-auto font-sans px-2 text-brand-text">
-					<Container className="email-container border border-solid border-brand-teal/20 rounded my-[40px] mx-auto p-[20px] max-w-[465px] w-full overflow-hidden bg-brand-subtle">
+					<Container className="email-container border border-solid border-brand-teal/20 rounded my-[40px] mx-auto p-[20px] max-w-[560px] w-full overflow-hidden bg-brand-subtle">
 						<div className="mb-8 text-center">
-							<img
+						<img
 								src={logoUrl}
 								alt="Wellness Research Supply"
 								className="mx-auto"
-								width="160"
-								height="40"
+								width="220"
+								height="36"
 							/>
 							<div className="h-1 w-full bg-gradient-to-r from-brand-aqua/20 via-brand-teal to-brand-aqua/20 mt-4 rounded-full opacity-50" />
 						</div>
