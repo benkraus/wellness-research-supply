@@ -53,6 +53,17 @@ interface VariantBatchAllocationWithDetails extends VariantBatchAllocation {
   order?: AllocationOrderDetail | null;
 }
 
+interface ProductSummary {
+  id: string;
+  title?: string | null;
+}
+
+interface VariantSummary {
+  id: string;
+  title?: string | null;
+  sku?: string | null;
+}
+
 const emptyForm = {
   variant_id: '',
   lot_number: '',
@@ -140,6 +151,38 @@ const fetchAllocations = async (filters: typeof emptyAllocationFilters) => {
   return (await response.json()) as { allocations: VariantBatchAllocationWithDetails[] };
 };
 
+const fetchProducts = async () => {
+  const params = new URLSearchParams();
+  params.set('limit', '200');
+  params.set('fields', 'id,title');
+
+  const response = await fetch(`/admin/products?${params.toString()}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to load products.');
+  }
+
+  return (await response.json()) as { products: ProductSummary[] };
+};
+
+const fetchProductVariants = async (productId: string) => {
+  const params = new URLSearchParams();
+  params.set('limit', '200');
+  params.set('fields', 'id,title,sku');
+
+  const response = await fetch(`/admin/products/${productId}/variants?${params.toString()}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to load variants.');
+  }
+
+  return (await response.json()) as { variants: VariantSummary[] };
+};
+
 const VariantBatchesSettingsPage = () => {
   const [formValues, setFormValues] = useState(emptyForm);
   const [filters, setFilters] = useState(emptyFilters);
@@ -158,6 +201,14 @@ const VariantBatchesSettingsPage = () => {
   const [allocations, setAllocations] = useState<VariantBatchAllocationWithDetails[]>([]);
   const [allocationLoading, setAllocationLoading] = useState(false);
   const [allocationError, setAllocationError] = useState<string | null>(null);
+
+  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [variants, setVariants] = useState<VariantSummary[]>([]);
+  const [variantsLoading, setVariantsLoading] = useState(false);
+  const [variantsError, setVariantsError] = useState<string | null>(null);
 
   const load = async (nextFilters: typeof emptyFilters = filters) => {
     try {
@@ -201,8 +252,48 @@ const VariantBatchesSettingsPage = () => {
       ...emptyForm,
       lot_number: generateLotNumber(),
     }));
+    setSelectedProductId('');
+    setVariants([]);
+    setVariantsError(null);
     setCreateUploadError(null);
+
+    if (products.length === 0) {
+      void (async () => {
+        try {
+          setProductsLoading(true);
+          setProductsError(null);
+          const data = await fetchProducts();
+          setProducts(data.products ?? []);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unexpected error.';
+          setProductsError(message);
+        } finally {
+          setProductsLoading(false);
+        }
+      })();
+    }
   }, [isCreateModalOpen]);
+
+  useEffect(() => {
+    if (!selectedProductId) return;
+    void (async () => {
+      try {
+        setVariantsLoading(true);
+        setVariantsError(null);
+        const data = await fetchProductVariants(selectedProductId);
+        const nextVariants = data.variants ?? [];
+        setVariants(nextVariants);
+        if (nextVariants.length === 1) {
+          setFormValues((prev) => ({ ...prev, variant_id: nextVariants[0].id }));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unexpected error.';
+        setVariantsError(message);
+      } finally {
+        setVariantsLoading(false);
+      }
+    })();
+  }, [selectedProductId]);
 
   useEffect(() => {
     setDrafts((prev) => {
@@ -229,6 +320,24 @@ const VariantBatchesSettingsPage = () => {
     });
     return map;
   }, [batches]);
+
+  const productOptions = useMemo(() => {
+    return [...products]
+      .sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
+      .map((product) => ({
+        value: product.id,
+        label: product.title ?? product.id,
+      }));
+  }, [products]);
+
+  const variantOptions = useMemo(() => {
+    return [...variants]
+      .sort((a, b) => (a.title ?? a.sku ?? a.id).localeCompare(b.title ?? b.sku ?? b.id))
+      .map((variant) => ({
+        value: variant.id,
+        label: `${variant.title ?? variant.sku ?? 'Variant'}${variant.sku ? ` · ${variant.sku}` : ''}`,
+      }));
+  }, [variants]);
 
   const getOrderBadgeColor = (status?: string | null): 'grey' | 'green' | 'orange' | 'red' => {
     if (!status) return 'grey';
@@ -877,12 +986,66 @@ const VariantBatchesSettingsPage = () => {
             <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Variant ID</Label>
-                  <Input
+                  <Label>Product</Label>
+                  <Select
+                    value={selectedProductId}
+                    onValueChange={(value) => {
+                      setSelectedProductId(value);
+                      setFormValues((prev) => ({ ...prev, variant_id: '' }));
+                      setVariants([]);
+                    }}
+                    disabled={productsLoading}
+                  >
+                    <Select.Trigger>
+                      <Select.Value placeholder={productsLoading ? 'Loading products…' : 'Select a product'} />
+                    </Select.Trigger>
+                    <Select.Content>
+                      {productOptions.map((product) => (
+                        <Select.Item key={product.value} value={product.value}>
+                          {product.label}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select>
+                  {productsError && <Text className="text-ui-fg-error">{productsError}</Text>}
+                  {!productsLoading && !productsError && productOptions.length === 0 && (
+                    <Text size="small" className="text-ui-fg-subtle">
+                      No products found.
+                    </Text>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Variant</Label>
+                  <Select
                     value={formValues.variant_id}
-                    onChange={(event) => setFormValues({ ...formValues, variant_id: event.target.value })}
-                    placeholder="variant_01H..."
-                  />
+                    onValueChange={(value) => setFormValues((prev) => ({ ...prev, variant_id: value }))}
+                    disabled={!selectedProductId || variantsLoading}
+                  >
+                    <Select.Trigger>
+                      <Select.Value
+                        placeholder={
+                          !selectedProductId
+                            ? 'Select a product first'
+                            : variantsLoading
+                              ? 'Loading variants…'
+                              : 'Select a variant'
+                        }
+                      />
+                    </Select.Trigger>
+                    <Select.Content>
+                      {variantOptions.map((variant) => (
+                        <Select.Item key={variant.value} value={variant.value}>
+                          {variant.label}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select>
+                  {variantsError && <Text className="text-ui-fg-error">{variantsError}</Text>}
+                  {!variantsLoading && selectedProductId && !variantsError && variantOptions.length === 0 && (
+                    <Text size="small" className="text-ui-fg-subtle">
+                      No variants found for this product.
+                    </Text>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
