@@ -1,5 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { Modules } from '@medusajs/utils';
+import type { IFileModuleService } from '@medusajs/types';
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const { filename, mimeType } = (req.body ?? {}) as {
@@ -11,7 +12,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json({ error: 'filename is required.' });
   }
 
-  const fileModuleService = req.scope.resolve(Modules.FILE);
+  const fileModuleService = req.scope.resolve<IFileModuleService>(Modules.FILE);
 
   const upload = await fileModuleService.getUploadFileUrls({
     filename,

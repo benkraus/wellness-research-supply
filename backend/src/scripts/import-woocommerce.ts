@@ -358,7 +358,7 @@ async function ensureDefaultShippingProfile(
 
   const { result } = await createShippingProfilesWorkflow(container).run({
     input: {
-      shipping_profiles: [
+      data: [
         {
           name: "Default Shipping Profile",
           type: "default",

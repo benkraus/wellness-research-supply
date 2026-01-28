@@ -1,8 +1,9 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { VARIANT_BATCH_MODULE } from '../../../../modules/variant-batch';
+import type VariantBatchModuleService from '../../../../modules/variant-batch/service';
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
-  const service = req.scope.resolve(VARIANT_BATCH_MODULE);
+  const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const { id } = req.params;
 
   const batch = await service.retrieveVariantBatch(id);
@@ -11,7 +12,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 };
 
 export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
-  const service = req.scope.resolve(VARIANT_BATCH_MODULE);
+  const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const { id } = req.params;
   const body = (req.body ?? {}) as {
     variant_id?: string;
@@ -45,7 +46,7 @@ export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
 };
 
 export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
-  const service = req.scope.resolve(VARIANT_BATCH_MODULE);
+  const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const { id } = req.params;
 
   await service.deleteVariantBatches(id);

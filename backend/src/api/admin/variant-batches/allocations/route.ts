@@ -1,9 +1,11 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { Modules } from '@medusajs/utils';
+import type { IOrderModuleService, OrderDTO } from '@medusajs/types';
 import { VARIANT_BATCH_MODULE } from '../../../../modules/variant-batch';
+import type VariantBatchModuleService from '../../../../modules/variant-batch/service';
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
-  const service = req.scope.resolve(VARIANT_BATCH_MODULE);
+  const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const { limit, offset, variant_batch_id, order_line_item_id } = req.query as Record<string, string | undefined>;
 
   const parsedLimit = Math.min(Number(limit) || 100, 200);
@@ -22,7 +24,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     .map((allocation) => allocation.order_line_item_id)
     .filter((id): id is string => typeof id === 'string' && id.length > 0);
 
-  const orderModuleService = req.scope.resolve(Modules.ORDER);
+  const orderModuleService = req.scope.resolve<IOrderModuleService>(Modules.ORDER);
   const lineItems = orderLineItemIds.length
     ? await orderModuleService.listOrderLineItems(
         { id: orderLineItemIds },
@@ -34,7 +36,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const allocationsWithDetails = allocations.map((allocation) => {
     const lineItem = lineItemMap.get(allocation.order_line_item_id);
-    const order = (lineItem as any)?.order;
+    const order = (lineItem?.order as OrderDTO | undefined) ?? undefined;
 
     return {
       ...allocation,
@@ -63,7 +65,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 };
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
-  const service = req.scope.resolve(VARIANT_BATCH_MODULE);
+  const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const body = (req.body ?? {}) as {
     variant_batch_id?: string;
     order_line_item_id?: string;
