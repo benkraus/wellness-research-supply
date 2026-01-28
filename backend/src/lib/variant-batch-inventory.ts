@@ -36,69 +36,91 @@ export const syncInventoryLevelsForVariants = async (
   }
 
   const query = scope.resolve<QueryGraph>('query');
-  const { data: initialVariants } = await query.graph({
-    entity: 'variant',
-    fields: [
-      'id',
-      'manage_inventory',
-      'inventory_items.inventory_item_id',
-      'inventory_items.required_quantity',
-    ],
-    filters: {
-      id: uniqueVariantIds,
-    },
-  });
+  const variantMap = new Map<string, VariantInventoryGraph>();
+  const knownVariantIds = new Set<string>(uniqueVariantIds);
+  const knownInventoryItemIds = new Set<string>();
+  let pendingVariantIds = new Set<string>(uniqueVariantIds);
+  let attempts = 0;
 
-  const initialVariantList = (initialVariants ?? []) as VariantInventoryGraph[];
-  const inventoryItemIds = normalizeIds(
-    initialVariantList
-      .flatMap((variant) => variant.inventory_items ?? [])
-      .map((item) => item.inventory_item_id ?? '')
-      .filter(Boolean),
-  );
+  while (pendingVariantIds.size > 0 && attempts < 8) {
+    attempts += 1;
+    const batchIds = Array.from(pendingVariantIds);
+    pendingVariantIds = new Set<string>();
 
-  let linkedVariantIds: string[] = [];
+    let batchVariants: VariantInventoryGraph[] = [];
 
-  if (inventoryItemIds.length) {
-    const { data: linkedVariants } = await query.graph({
-      entity: 'variant',
-      fields: ['id'],
-      filters: {
-        inventory_items: {
-          inventory_item_id: inventoryItemIds,
+    try {
+      const { data } = await query.graph({
+        entity: 'variant',
+        fields: [
+          'id',
+          'manage_inventory',
+          'inventory_items.inventory_item_id',
+          'inventory_items.required_quantity',
+        ],
+        filters: {
+          id: batchIds,
         },
-      },
-    });
+      });
+      batchVariants = (data ?? []) as VariantInventoryGraph[];
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load variants for inventory sync', error);
+      break;
+    }
 
-    linkedVariantIds = normalizeIds(
-      (linkedVariants ?? [])
-        .map((variant) => (variant as { id?: string }).id ?? '')
-        .filter(Boolean),
-    );
+    const newlyDiscoveredItemIds: string[] = [];
+    for (const variant of batchVariants) {
+      variantMap.set(variant.id, variant);
+      const inventoryItems = Array.isArray(variant.inventory_items) ? variant.inventory_items : [];
+      for (const item of inventoryItems) {
+        const inventoryItemId = item.inventory_item_id ?? null;
+        if (!inventoryItemId || knownInventoryItemIds.has(inventoryItemId)) {
+          continue;
+        }
+        knownInventoryItemIds.add(inventoryItemId);
+        newlyDiscoveredItemIds.push(inventoryItemId);
+      }
+    }
+
+    if (!newlyDiscoveredItemIds.length) {
+      continue;
+    }
+
+    try {
+      const { data: linkedVariants } = await query.graph({
+        entity: 'variant',
+        fields: ['id'],
+        filters: {
+          inventory_items: {
+            inventory_item_id: newlyDiscoveredItemIds,
+          },
+        },
+      });
+
+      const linkedVariantIds = normalizeIds(
+        (linkedVariants ?? [])
+          .map((variant) => (variant as { id?: string }).id ?? '')
+          .filter(Boolean),
+      );
+
+      linkedVariantIds.forEach((variantId) => {
+        if (!knownVariantIds.has(variantId)) {
+          knownVariantIds.add(variantId);
+          pendingVariantIds.add(variantId);
+        }
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to expand variants for inventory sync', error);
+      break;
+    }
   }
 
-  const allVariantIds = normalizeIds([
-    ...initialVariantList.map((variant) => variant.id),
-    ...linkedVariantIds,
-  ]);
-  if (!allVariantIds.length) {
+  const variants = Array.from(variantMap.values());
+  if (!variants.length) {
     return;
   }
-
-  const { data: fullVariants } = await query.graph({
-    entity: 'variant',
-    fields: [
-      'id',
-      'manage_inventory',
-      'inventory_items.inventory_item_id',
-      'inventory_items.required_quantity',
-    ],
-    filters: {
-      id: allVariantIds,
-    },
-  });
-
-  const variants = (fullVariants ?? []) as VariantInventoryGraph[];
 
   const batchService = scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const batches = await batchService.listVariantBatches({ variant_id: allVariantIds });

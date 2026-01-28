@@ -77,7 +77,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     metadata: body.metadata ?? null,
   });
 
-  await syncInventoryLevelsForVariants([batch.variant_id], req.scope);
+  try {
+    await syncInventoryLevelsForVariants([batch.variant_id], req.scope);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to sync inventory levels after batch create', error);
+  }
 
   return res.status(201).json({ batch });
 };

@@ -47,7 +47,12 @@ export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
   const variantIds = [existing.variant_id, batch.variant_id].filter(
     (variantId): variantId is string => typeof variantId === 'string' && variantId.length > 0,
   );
-  await syncInventoryLevelsForVariants(variantIds, req.scope);
+  try {
+    await syncInventoryLevelsForVariants(variantIds, req.scope);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to sync inventory levels after batch update', error);
+  }
 
   return res.status(200).json({ batch });
 };
@@ -59,7 +64,12 @@ export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
   const existing = await service.retrieveVariantBatch(id);
   await service.deleteVariantBatches(id);
 
-  await syncInventoryLevelsForVariants([existing.variant_id], req.scope);
+  try {
+    await syncInventoryLevelsForVariants([existing.variant_id], req.scope);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to sync inventory levels after batch delete', error);
+  }
 
   return res.status(204).end();
 };
