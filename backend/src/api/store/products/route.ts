@@ -2,7 +2,7 @@ import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { ContainerRegistrationKeys, FeatureFlag, isPresent, QueryContext } from '@medusajs/framework/utils';
 
 import { attachBatchInventoryQuantities } from './variant-batch-inventory';
-import { wrapProductsWithTaxPrices } from './helpers';
+import { attachVariantPrices, wrapProductsWithTaxPrices } from './helpers';
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   if (FeatureFlag.isFeatureEnabled('index_engine')) {
@@ -26,6 +26,9 @@ const normalizeFields = (req: MedusaRequest) => {
       (field) => !field.includes('variants.inventory_quantity'),
     );
   }
+  if (!req.queryConfig.fields.includes('variants.price_set.prices')) {
+    req.queryConfig.fields.push('variants.price_set.prices');
+  }
   return includesInventory;
 };
 
@@ -35,6 +38,14 @@ const attachBatchTotalsForProducts = async (req: MedusaRequest, products: any[])
     return;
   }
   await attachBatchInventoryQuantities(req.scope, variants);
+};
+
+const attachPricesForProducts = (products: any[]) => {
+  const variants = products.map((product) => product.variants ?? []).flat(1);
+  if (!variants.length) {
+    return;
+  }
+  attachVariantPrices(variants);
 };
 
 async function getProductsWithIndexEngine(req: MedusaRequest, res: MedusaResponse) {
@@ -74,6 +85,7 @@ async function getProductsWithIndexEngine(req: MedusaRequest, res: MedusaRespons
   if (includesInventory) {
     await attachBatchTotalsForProducts(req, products);
   }
+  attachPricesForProducts(products);
   await wrapProductsWithTaxPrices(req, products);
 
   res.json({
@@ -114,6 +126,7 @@ async function getProducts(req: MedusaRequest, res: MedusaResponse) {
   if (includesInventory) {
     await attachBatchTotalsForProducts(req, products);
   }
+  attachPricesForProducts(products);
   await wrapProductsWithTaxPrices(req, products);
 
   res.json({

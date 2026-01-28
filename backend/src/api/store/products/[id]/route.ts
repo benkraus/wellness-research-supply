@@ -3,6 +3,7 @@ import { MedusaError, QueryContext, isPresent } from '@medusajs/framework/utils'
 
 import { attachBatchInventoryQuantities } from '../variant-batch-inventory';
 import {
+  attachVariantPrices,
   filterOutInternalProductCategories,
   refetchProduct,
   wrapProductsWithTaxPrices,
@@ -14,6 +15,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     req.queryConfig.fields = req.queryConfig.fields.filter(
       (field) => !field.includes('variants.inventory_quantity'),
     );
+  }
+  if (!req.queryConfig.fields.includes('variants.price_set.prices')) {
+    req.queryConfig.fields.push('variants.price_set.prices');
   }
 
   const filters = {
@@ -39,6 +43,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 
   if (includesInventory && product.variants?.length) {
     await attachBatchInventoryQuantities(req.scope, product.variants);
+  }
+  if (product.variants?.length) {
+    attachVariantPrices(product.variants);
   }
 
   if (includesCategoriesField) {

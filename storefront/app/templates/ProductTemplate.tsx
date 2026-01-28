@@ -28,6 +28,7 @@ import {
   selectVariantFromMatrixBySelectedOptions,
   selectVariantMatrix,
 } from '@libs/util/products';
+import { formatPrice, getVariantFinalPrice } from '@libs/util/prices';
 import { StoreProduct, StoreProductOptionValue, StoreProductVariant } from '@medusajs/types';
 import truncate from 'lodash/truncate';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -201,6 +202,40 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
   );
 
   const productSoldOut = useProductInventory(product).averageInventory === 0;
+  const pricingTiers = useMemo(() => {
+    if (!selectedVariant) return [];
+
+    const prices = ((selectedVariant as { prices?: any[] }).prices ?? []).filter(
+      (price) => price?.currency_code === currencyCode,
+    );
+
+    const tierPrices = prices
+      .filter((price) => price?.min_quantity || price?.max_quantity)
+      .map((price) => ({
+        min: Number(price.min_quantity ?? 1),
+        max: price.max_quantity === null || price.max_quantity === undefined ? null : Number(price.max_quantity),
+        amount: Number(price.amount ?? 0),
+      }))
+      .filter((price) => Number.isFinite(price.amount) && price.amount > 0)
+      .sort((a, b) => a.min - b.min);
+
+    if (!tierPrices.length) return [];
+
+    const basePrice =
+      prices.find((price) => !price.min_quantity && !price.max_quantity)?.amount ??
+      getVariantFinalPrice(selectedVariant);
+
+    return tierPrices.map((tier) => {
+      const label = tier.max && tier.max >= tier.min ? `${tier.min}-${tier.max}` : `${tier.min}+`;
+      const discount = basePrice ? Math.round(((basePrice - tier.amount) / basePrice) * 100) : null;
+
+      return {
+        label,
+        price: formatPrice(tier.amount, { currency: currencyCode }),
+        discount: discount && discount > 0 ? discount : null,
+      };
+    });
+  }, [currencyCode, selectedVariant]);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -421,6 +456,26 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                 <ProductPriceRange product={product} currencyCode={currencyCode} />
                               )}
                             </p>
+                            {pricingTiers.length > 0 && (
+                              <div className="mt-4 rounded-2xl border border-primary-200/20 bg-highlight-100/15 p-4 sm:p-5 shadow-[0_16px_40px_-32px_rgba(45,212,191,0.5)]">
+                                <p className="text-2xs uppercase tracking-[0.3em] text-primary-300">
+                                  Volume pricing
+                                </p>
+                                <div className="mt-3 grid gap-2 text-sm text-primary-100">
+                                  {pricingTiers.map((tier) => (
+                                    <div key={tier.label} className="flex flex-wrap items-center gap-3">
+                                      <span className="rounded-full border border-primary-200/30 px-3 py-1 text-xs font-semibold text-primary-50">
+                                        {tier.label} vials
+                                      </span>
+                                      <span className="text-primary-50">{tier.price} each</span>
+                                      {tier.discount ? (
+                                        <span className="text-primary-200">Save {tier.discount}%</span>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </section>
 
                           {productSelectOptions && productSelectOptions.length > 5 && (

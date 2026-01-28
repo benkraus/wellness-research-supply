@@ -23,6 +23,33 @@ type TaxableProduct = {
   categories?: Array<{ is_internal?: boolean }>;
 };
 
+type PriceRule = {
+  attribute?: string | null;
+  value?: string | null;
+};
+
+type PriceSetPrice = {
+  id: string;
+  amount: number;
+  currency_code: string;
+  min_quantity?: number | null;
+  max_quantity?: number | null;
+  created_at?: string;
+  updated_at?: string;
+  price_rules?: PriceRule[] | null;
+};
+
+const buildRules = (price: PriceSetPrice) => {
+  const rules: Record<string, string> = {};
+  for (const priceRule of price.price_rules || []) {
+    const ruleAttribute = priceRule.attribute;
+    if (ruleAttribute) {
+      rules[ruleAttribute] = priceRule.value ?? '';
+    }
+  }
+  return rules;
+};
+
 export const refetchProduct = async (
   idOrFilter: Record<string, unknown>,
   scope: any,
@@ -100,6 +127,30 @@ export const wrapProductsWithTaxPrices = async (req: any, products: TaxableProdu
       variant.calculated_price.original_amount_with_tax = originalPriceWithTax;
       variant.calculated_price.original_amount_without_tax = originalPriceWithoutTax;
     });
+  });
+};
+
+export const attachVariantPrices = (variants: any[]) => {
+  variants.forEach((variant) => {
+    const prices = (variant?.price_set?.prices as PriceSetPrice[] | undefined)?.map((price) => ({
+      id: price.id,
+      amount: price.amount,
+      currency_code: price.currency_code,
+      min_quantity: price.min_quantity,
+      max_quantity: price.max_quantity,
+      variant_id: variant.id,
+      created_at: price.created_at,
+      updated_at: price.updated_at,
+      rules: buildRules(price),
+    }));
+
+    if (prices) {
+      variant.prices = prices;
+    }
+
+    if ('price_set' in variant) {
+      delete variant.price_set;
+    }
   });
 };
 
