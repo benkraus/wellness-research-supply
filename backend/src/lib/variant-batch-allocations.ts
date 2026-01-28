@@ -101,13 +101,26 @@ export const allocateVariantBatchesForOrder = async (orderId: string, container:
     }
   };
 
+  let lockingService: ILockingModule | null = null;
+
   try {
-    const lockingService = container.resolve(Modules.LOCKING) as ILockingModule;
+    lockingService = container.resolve(Modules.LOCKING) as ILockingModule;
+  } catch {
+    lockingService = null;
+  }
+
+  if (!lockingService) {
+    await runAllocation();
+    return;
+  }
+
+  try {
     await lockingService.execute(`variant-batch-allocations:${orderId}`, runAllocation, {
       timeout: 10,
     });
   } catch (error) {
-    await runAllocation();
+    // eslint-disable-next-line no-console
+    console.warn('Skipping allocation; lock unavailable', error);
   }
 };
 
