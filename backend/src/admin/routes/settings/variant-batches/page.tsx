@@ -124,6 +124,8 @@ const VariantBatchesSettingsPage = () => {
   const [drafts, setDrafts] = useState<Record<string, { quantity: string; coa_file_key: string }>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  const [createUploadLoading, setCreateUploadLoading] = useState(false);
+  const [createUploadError, setCreateUploadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -341,6 +343,56 @@ const VariantBatchesSettingsPage = () => {
     }
   };
 
+  const handleCreateUpload = async (file?: File | null) => {
+    if (!file) return;
+
+    try {
+      setCreateUploadError(null);
+      setCreateUploadLoading(true);
+
+      const response = await fetch('/admin/variant-batches/coa-upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || 'application/pdf',
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Unable to request upload URL.');
+      }
+
+      const { upload_url, file_key } = (await response.json()) as { upload_url: string; file_key: string };
+
+      const uploadResult = await fetch(upload_url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/pdf',
+        },
+        body: file,
+      });
+
+      if (!uploadResult.ok) {
+        throw new Error('Upload failed.');
+      }
+
+      setFormValues((prev) => ({
+        ...prev,
+        coa_file_key: file_key,
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed.';
+      setCreateUploadError(message);
+    } finally {
+      setCreateUploadLoading(false);
+    }
+  };
+
   const handleCreateAllocation = async () => {
     try {
       setAllocationError(null);
@@ -439,6 +491,20 @@ const VariantBatchesSettingsPage = () => {
               onChange={(event) => setFormValues({ ...formValues, coa_file_key: event.target.value })}
               placeholder="coa/glp-1/lot-a2.pdf"
             />
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="text-xs"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  void handleCreateUpload(file);
+                  event.currentTarget.value = '';
+                }}
+              />
+              {createUploadLoading && <Text className="text-ui-fg-subtle">Uploading…</Text>}
+              {createUploadError && <Text className="text-ui-fg-error">{createUploadError}</Text>}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
