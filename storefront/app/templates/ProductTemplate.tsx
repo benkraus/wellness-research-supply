@@ -378,16 +378,14 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
             <input type="hidden" name="productId" value={product.id} />
 
             <Container className="px-0 sm:px-6 md:px-8">
-              <Grid>
+              <Grid className="items-start">
                 <GridColumn>
                   <div className="md:py-6">
                     <Grid className="!gap-0">
-                      <GridColumn className="mb-8 md:col-span-6 lg:col-span-7 xl:pr-16 xl:pl-9">
-                        <ProductImageGallery key={product.id} product={product} />
-                      </GridColumn>
-
-                      <GridColumn className="flex flex-col md:col-span-6 lg:col-span-5">
-                        <div className="px-0 sm:px-6 md:p-10 md:pt-0">
+                      <GridColumn className="flex flex-col md:col-span-8 lg:col-span-8 lg:pr-8 xl:pr-12">
+                        <div className="relative overflow-hidden rounded-3xl bg-highlight-100/10 px-0 sm:px-6 md:p-10 md:pt-0 shadow-[0_20px_60px_-45px_rgba(45,212,191,0.65)]">
+                          <div className="pointer-events-none absolute -right-24 -top-20 h-56 w-56 rounded-full bg-primary-400/10 blur-3xl" />
+                          <div className="pointer-events-none absolute -bottom-16 right-12 h-40 w-40 rounded-full bg-highlight-200/15 blur-3xl" />
                           <div>
                             <Breadcrumbs className="mb-6 text-primary-200" breadcrumbs={breadcrumbs} />
 
@@ -486,11 +484,31 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                             {!!product.description && (
                               <div className="mt-4">
                                 <h3 className="mb-2 text-primary-200">Description</h3>
-                                <div className="whitespace-pre-wrap text-base text-primary-200">
-                                  {product.description}
-                                </div>
+                                <div
+                                  className="prose prose-invert max-w-none text-primary-100"
+                                  dangerouslySetInnerHTML={{ __html: product.description }}
+                                />
                               </div>
                             )}
+
+                            <div className="mt-6 rounded-2xl border border-primary-200/20 bg-highlight-100/20 p-4 sm:p-5 shadow-[0_16px_40px_-32px_rgba(45,212,191,0.65)]">
+                              <p className="text-2xs uppercase tracking-[0.3em] text-primary-300">COA transparency</p>
+                              <h4 className="mt-2 text-base font-semibold text-primary-50">
+                                Certificates of Analysis are batch specific
+                              </h4>
+                              <p className="mt-2 text-sm text-primary-200">
+                                We obtain Certificates of Analysis (COAs) for each batch. The store may have multiple
+                                batches of the same product on hand at once, so there is not a single COA displayed on
+                                the product page.
+                              </p>
+                              <p className="mt-3 text-xs text-primary-200">
+                                Have a lot number?{' '}
+                                <Link to="/coa" className="font-semibold text-primary-50 underline underline-offset-4">
+                                  Look up your COA
+                                </Link>
+                                .
+                              </p>
+                            </div>
 
                             {product.categories && product.categories.length > 0 && (
                               <nav aria-label="Categories" className="mt-4">
@@ -528,6 +546,14 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                 </ol>
                               </nav>
                             )}
+                          </div>
+                        </div>
+                      </GridColumn>
+
+                      <GridColumn className="mb-10 md:col-span-4 lg:col-span-4 lg:pl-6 xl:pl-10">
+                        <div className="md:sticky md:top-24">
+                          <div className="mx-auto w-full max-w-xs lg:max-w-[220px] xl:max-w-xs">
+                            <ProductImageGallery key={product.id} product={product} />
                           </div>
                         </div>
                       </GridColumn>

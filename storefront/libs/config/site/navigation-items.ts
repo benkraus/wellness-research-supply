@@ -17,6 +17,14 @@ export const headerNavigationItems: NavigationCollection = [
     location: NavigationItemLocation.header,
     new_tab: false,
   },
+  {
+    id: 4,
+    label: 'COA Lookup',
+    url: '/coa',
+    sort_order: 2,
+    location: NavigationItemLocation.header,
+    new_tab: false,
+  },
 ];
 
 export const footerNavigationItems: NavigationCollection = [
@@ -34,6 +42,14 @@ export const footerNavigationItems: NavigationCollection = [
     url: '/about-us',
     location: NavigationItemLocation.footer,
     sort_order: 1,
+    new_tab: false,
+  },
+  {
+    id: 3,
+    label: 'COA Lookup',
+    url: '/coa',
+    location: NavigationItemLocation.footer,
+    sort_order: 2,
     new_tab: false,
   },
 ];

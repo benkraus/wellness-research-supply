@@ -77,7 +77,7 @@ export const ProductImageGallery: FC<ProductImageGalleryProps> = ({ product }) =
       : (images as ProductGalleryImage[]);
 
   return (
-    <TabGroup as="div" className="flex flex-col-reverse gap-4 lg:flex-row">
+    <TabGroup as="div" className="flex flex-col-reverse gap-4 lg:flex-row-reverse">
       <h2 className="sr-only">Images</h2>
       {gallery.length > 1 && (
         <div className="flex-grow-1 relative mx-auto mb-12 block h-8 w-full lg:mb-0 lg:h-auto lg:max-w-[68px]">

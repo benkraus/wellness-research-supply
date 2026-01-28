@@ -89,6 +89,9 @@ const medusaConfig = {
   },
   modules: [
     {
+      resolve: './src/modules/variant-batch',
+    },
+    {
       key: Modules.FULFILLMENT,
       resolve: '@medusajs/medusa/fulfillment',
       options: {
