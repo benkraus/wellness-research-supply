@@ -45,6 +45,30 @@ VENMO_POLL_MAX_ATTEMPTS=12
 VENMO_POLL_MAX_DAYS=3
 ```
 
+### eDebit payments
+The eDebit provider is enabled when the required env vars are present. It uses the Green.Money eDebit API (OneTimeDraftRTV by default).
+
+Required env vars:
+
+```
+EDEBIT_CLIENT_ID=...
+EDEBIT_API_PASSWORD=...
+EDEBIT_ENCRYPTION_KEY=...
+```
+
+Optional env vars:
+
+```
+EDEBIT_ENDPOINT=https://www.greenbyphone.com/eCheck.asmx
+EDEBIT_VERIFICATION_MODE=rtv
+EDEBIT_CHECK_MEMO_TEMPLATE=Order {session_id}
+EDEBIT_STATUS_CHECK_ENABLED=true
+```
+
+Per-order eDebit details:
+- The storefront collects the buyer's bank details (account holder name, routing number, account number, bank name, phone) and stores them on the payment session data.
+- The provider submits a one-time draft to eDebit and stores the resulting Check_ID on the payment session.
+
 ### telegram order notifications
 Send a Telegram message when a new order is placed.
 
@@ -68,15 +92,18 @@ Per-order Venmo destination:
 #### Region payment provider config
 Venmo only shows up at checkout if the region includes the Venmo provider ID.
 
+eDebit only shows up at checkout if the region includes the eDebit provider ID.
+
 Option A (Admin UI):
 - Admin → Settings → Regions → Edit Region → Payment Providers → enable **Venmo**
 
 Option B (seed data):
 - Add `"pp_venmo_venmo"` to the region’s `payment_providers` in `backend/src/scripts/seed.ts`.
+- Add `"pp_edebit_edebit"` to the same list if you want eDebit enabled by default.
 - Example:
 
 ```
-payment_providers: ["pp_system_default", "pp_venmo_venmo"],
+payment_providers: ["pp_system_default", "pp_venmo_venmo", "pp_edebit_edebit"],
 ```
 
 If you add another provider (e-check, Stripe, etc.), include its provider ID in the same list so multiple options appear at checkout.

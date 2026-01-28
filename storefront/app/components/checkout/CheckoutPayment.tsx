@@ -4,6 +4,7 @@ import { CheckoutStep } from '@app/providers/checkout-provider';
 import { Tab } from '@headlessui/react';
 import clsx from 'clsx';
 import { FC, useMemo } from 'react';
+import { EdebitPayment } from './EdebitPayment/EdebitPayment';
 import { ManualPayment } from './ManualPayment/ManualPayment';
 import { VenmoPayment } from './VenmoPayment/VenmoPayment';
 
@@ -21,15 +22,18 @@ export const CheckoutPayment: FC = () => {
         .filter((provider) => !provider.id.includes('stripe'))
         .map((provider) => {
           const isVenmo = provider.id.includes('venmo');
+          const isEdebit = provider.id.includes('edebit');
 
           return {
             id: provider.id,
             label: isVenmo
               ? 'Venmo'
+              : isEdebit
+                ? 'eDebit (ACH)'
               : provider.id === SYSTEM_PROVIDER_ID
                 ? 'Manual Payment'
                 : provider.name ?? provider.id,
-            component: isVenmo ? VenmoPayment : ManualPayment,
+            component: isVenmo ? VenmoPayment : isEdebit ? EdebitPayment : ManualPayment,
           };
         }),
     [paymentProviders],

@@ -26,6 +26,13 @@ import {
   VENMO_TARGET_USER_ID,
   VENMO_ACTOR_ID,
   VENMO_NOTE_TEMPLATE,
+  EDEBIT_CLIENT_ID,
+  EDEBIT_API_PASSWORD,
+  EDEBIT_ENDPOINT,
+  EDEBIT_VERIFICATION_MODE,
+  EDEBIT_CHECK_MEMO_TEMPLATE,
+  EDEBIT_STATUS_CHECK_ENABLED,
+  EDEBIT_ENCRYPTION_KEY,
   WORKER_MODE,
   MINIO_ENDPOINT,
   MINIO_ACCESS_KEY,
@@ -42,6 +49,7 @@ loadEnv(process.env.NODE_ENV, process.cwd());
 const paymentProviders = []
 
 const venmoEnabled = VENMO_ACCESS_TOKEN
+const edebitEnabled = EDEBIT_CLIENT_ID && EDEBIT_API_PASSWORD && EDEBIT_ENCRYPTION_KEY
 
 if (venmoEnabled) {
   paymentProviders.push({
@@ -60,6 +68,22 @@ if (venmoEnabled) {
       targetUserId: VENMO_TARGET_USER_ID,
       actorId: VENMO_ACTOR_ID,
       noteTemplate: VENMO_NOTE_TEMPLATE,
+    },
+  })
+}
+
+if (edebitEnabled) {
+  paymentProviders.push({
+    resolve: './src/modules/edebit-payment',
+    id: 'edebit',
+    options: {
+      clientId: EDEBIT_CLIENT_ID,
+      apiPassword: EDEBIT_API_PASSWORD,
+      endpoint: EDEBIT_ENDPOINT,
+      verificationMode: EDEBIT_VERIFICATION_MODE,
+      checkMemoTemplate: EDEBIT_CHECK_MEMO_TEMPLATE,
+      statusCheckEnabled: EDEBIT_STATUS_CHECK_ENABLED,
+      encryptionKey: EDEBIT_ENCRYPTION_KEY,
     },
   })
 }

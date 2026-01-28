@@ -84,6 +84,13 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
     billingAddress: defaultBillingAddress,
     providerId,
     venmoContact: '',
+    edebitAccountName: '',
+    edebitRoutingNumber: '',
+    edebitAccountNumber: '',
+    edebitBankName: '',
+    edebitPhone: '',
+    edebitSavedMethodId: '',
+    edebitSaveMethod: false,
   };
 
   const form = useRemixForm({
