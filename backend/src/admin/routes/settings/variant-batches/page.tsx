@@ -976,13 +976,15 @@ const VariantBatchesSettingsPage = () => {
 
       <FocusModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <FocusModal.Content>
-          <FocusModal.Header>
-            <FocusModal.Title>Create new batch</FocusModal.Title>
-            <FocusModal.Description>
-              Add a new lot, assign quantities, and optionally upload a COA PDF.
-            </FocusModal.Description>
+          <FocusModal.Header className="justify-start gap-x-6 px-6 py-4">
+            <div className="space-y-1">
+              <FocusModal.Title>Create new batch</FocusModal.Title>
+              <FocusModal.Description>
+                Add a new lot, assign quantities, and optionally upload a COA PDF.
+              </FocusModal.Description>
+            </div>
           </FocusModal.Header>
-          <FocusModal.Body className="space-y-6">
+          <FocusModal.Body className="space-y-6 px-6 py-6">
             <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1118,7 +1120,7 @@ const VariantBatchesSettingsPage = () => {
               </div>
             </div>
           </FocusModal.Body>
-          <FocusModal.Footer className="flex flex-wrap gap-2">
+          <FocusModal.Footer className="flex flex-wrap gap-2 px-6 py-4">
             <Button
               variant="secondary"
               onClick={() => setIsCreateModalOpen(false)}
