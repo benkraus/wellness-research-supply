@@ -57,17 +57,12 @@ export const syncInventoryLevelsForVariants = async (
       .filter(Boolean),
   );
 
-  let variants: VariantInventoryGraph[] = initialVariantList;
+  let linkedVariantIds: string[] = [];
 
   if (inventoryItemIds.length) {
     const { data: linkedVariants } = await query.graph({
       entity: 'variant',
-      fields: [
-        'id',
-        'manage_inventory',
-        'inventory_items.inventory_item_id',
-        'inventory_items.required_quantity',
-      ],
+      fields: ['id'],
       filters: {
         inventory_items: {
           inventory_item_id: inventoryItemIds,
@@ -75,16 +70,35 @@ export const syncInventoryLevelsForVariants = async (
       },
     });
 
-    const linkedVariantList = (linkedVariants ?? []) as VariantInventoryGraph[];
-    if (linkedVariantList.length) {
-      variants = linkedVariantList;
-    }
+    linkedVariantIds = normalizeIds(
+      (linkedVariants ?? [])
+        .map((variant) => (variant as { id?: string }).id ?? '')
+        .filter(Boolean),
+    );
   }
 
-  const allVariantIds = normalizeIds(variants.map((variant) => variant.id));
+  const allVariantIds = normalizeIds([
+    ...initialVariantList.map((variant) => variant.id),
+    ...linkedVariantIds,
+  ]);
   if (!allVariantIds.length) {
     return;
   }
+
+  const { data: fullVariants } = await query.graph({
+    entity: 'variant',
+    fields: [
+      'id',
+      'manage_inventory',
+      'inventory_items.inventory_item_id',
+      'inventory_items.required_quantity',
+    ],
+    filters: {
+      id: allVariantIds,
+    },
+  });
+
+  const variants = (fullVariants ?? []) as VariantInventoryGraph[];
 
   const batchService = scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const batches = await batchService.listVariantBatches({ variant_id: allVariantIds });
