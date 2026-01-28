@@ -2,6 +2,8 @@ import type { AdminInventoryItem, DetailWidgetProps } from '@medusajs/framework/
 import { Badge, Container, Heading, Table, Text } from '@medusajs/ui';
 import { useEffect, useMemo, useState } from 'react';
 
+const defineWidgetConfig = <T extends { zone: string | string[] }>(config: T): T => config;
+
 interface VariantSummary {
   id: string;
   title?: string | null;
@@ -136,8 +138,8 @@ const InventoryItemBatchesWidget = ({ data }: DetailWidgetProps<AdminInventoryIt
   );
 };
 
-export const config = {
+export const config = defineWidgetConfig({
   zone: 'inventory_item.details.side.after',
-} as const;
+});
 
 export default InventoryItemBatchesWidget;
