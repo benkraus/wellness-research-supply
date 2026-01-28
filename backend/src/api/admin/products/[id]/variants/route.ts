@@ -1,9 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { refetchEntities } from '@medusajs/framework/http';
-import {
-  remapKeysForVariant,
-  remapVariantResponse,
-} from '@medusajs/medusa/dist/api/admin/products/helpers';
+import { remapKeysForVariant, remapVariantResponse } from '../../variant-helpers';
 
 import { VARIANT_BATCH_MODULE } from '../../../../../modules/variant-batch';
 import type VariantBatchModuleService from '../../../../../modules/variant-batch/service';
