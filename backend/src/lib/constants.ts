@@ -164,6 +164,23 @@ export const VENMO_POLL_MAX_DAYS_SAFE = Number.isFinite(VENMO_POLL_MAX_DAYS)
   : 3
 
 /**
+ * (optional) eDebit configuration
+ */
+export const EDEBIT_CLIENT_ID = process.env.EDEBIT_CLIENT_ID;
+export const EDEBIT_API_PASSWORD = process.env.EDEBIT_API_PASSWORD;
+export const EDEBIT_ENDPOINT = process.env.EDEBIT_ENDPOINT;
+export const EDEBIT_VERIFICATION_MODE = process.env.EDEBIT_VERIFICATION_MODE as
+  | "rtv"
+  | "bv"
+  | undefined;
+export const EDEBIT_CHECK_MEMO_TEMPLATE = process.env.EDEBIT_CHECK_MEMO_TEMPLATE;
+export const EDEBIT_STATUS_CHECK_ENABLED =
+  process.env.EDEBIT_STATUS_CHECK_ENABLED === undefined
+    ? undefined
+    : process.env.EDEBIT_STATUS_CHECK_ENABLED === "true";
+export const EDEBIT_ENCRYPTION_KEY = process.env.EDEBIT_ENCRYPTION_KEY;
+
+/**
  * (optional) Meilisearch configuration
  */
 export const MEILISEARCH_HOST = process.env.MEILISEARCH_HOST;
