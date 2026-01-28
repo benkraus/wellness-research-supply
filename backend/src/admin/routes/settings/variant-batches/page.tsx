@@ -1,5 +1,17 @@
 import { defineRouteConfig } from '@medusajs/admin-sdk';
-import { Badge, Button, Container, Heading, Input, Label, Select, Table, Text } from '@medusajs/ui';
+import {
+  Badge,
+  Button,
+  Container,
+  FocusModal,
+  Heading,
+  Input,
+  Label,
+  Select,
+  Table,
+  Tabs,
+  Text,
+} from '@medusajs/ui';
 import { useEffect, useMemo, useState } from 'react';
 
 interface VariantBatch {
@@ -72,6 +84,17 @@ const toNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const generateLotNumber = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let value = '';
+
+  for (let i = 0; i < 6; i += 1) {
+    value += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  return value;
+};
+
 const buildBatchQuery = (filters: typeof emptyFilters) => {
   const params = new URLSearchParams();
   params.set('limit', '200');
@@ -128,6 +151,7 @@ const VariantBatchesSettingsPage = () => {
   const [createUploadError, setCreateUploadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const [allocationForm, setAllocationForm] = useState(emptyAllocationForm);
   const [allocationFilters, setAllocationFilters] = useState(emptyAllocationFilters);
@@ -172,6 +196,15 @@ const VariantBatchesSettingsPage = () => {
   }, []);
 
   useEffect(() => {
+    if (!isCreateModalOpen) return;
+    setFormValues((prev) => ({
+      ...emptyForm,
+      lot_number: generateLotNumber(),
+    }));
+    setCreateUploadError(null);
+  }, [isCreateModalOpen]);
+
+  useEffect(() => {
     setDrafts((prev) => {
       const next = { ...prev };
       batches.forEach((batch) => {
@@ -205,6 +238,12 @@ const VariantBatchesSettingsPage = () => {
     return 'grey';
   };
 
+  const triggerFilePicker = (inputId: string) => {
+    if (typeof document === 'undefined') return;
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    input?.click();
+  };
+
   const handleCreate = async () => {
     try {
       setError(null);
@@ -228,6 +267,7 @@ const VariantBatchesSettingsPage = () => {
       }
 
       setFormValues(emptyForm);
+      setIsCreateModalOpen(false);
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error.';
@@ -442,422 +482,483 @@ const VariantBatchesSettingsPage = () => {
     }
   };
 
+  const createUploadInputId = 'coa-create-upload';
+
   return (
-    <Container className="divide-y p-0">
-      <div className="flex items-center justify-between px-6 py-8">
+    <Container className="p-0">
+      <div className="flex flex-col gap-4 border-b px-6 py-8 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <Heading level="h1">Batches & Lots</Heading>
           <Text className="text-ui-fg-subtle">
             Track lot numbers, quantities, and COA file keys for each product variant.
           </Text>
         </div>
-        <Badge size="large" color="blue">
-          {batches.length} batches
-        </Badge>
-      </div>
-
-      <div className="px-6 py-8 space-y-6">
-        <Heading level="h2">Create new batch</Heading>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Variant ID</Label>
-            <Input
-              value={formValues.variant_id}
-              onChange={(event) => setFormValues({ ...formValues, variant_id: event.target.value })}
-              placeholder="variant_01H..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Lot number</Label>
-            <Input
-              value={formValues.lot_number}
-              onChange={(event) => setFormValues({ ...formValues, lot_number: event.target.value })}
-              placeholder="WS-GLP-2409-A2"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Quantity</Label>
-            <Input
-              type="number"
-              min={0}
-              value={formValues.quantity}
-              onChange={(event) => setFormValues({ ...formValues, quantity: event.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>COA file key</Label>
-            <Input
-              value={formValues.coa_file_key}
-              onChange={(event) => setFormValues({ ...formValues, coa_file_key: event.target.value })}
-              placeholder="coa/glp-1/lot-a2.pdf"
-            />
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <input
-                type="file"
-                accept="application/pdf"
-                className="text-xs"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  void handleCreateUpload(file);
-                  event.currentTarget.value = '';
-                }}
-              />
-              {createUploadLoading && <Text className="text-ui-fg-subtle">Uploading…</Text>}
-              {createUploadError && <Text className="text-ui-fg-error">{createUploadError}</Text>}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            onClick={handleCreate}
-            disabled={!formValues.variant_id.trim() || !formValues.lot_number.trim()}
-          >
-            Add batch
-          </Button>
-          <Button variant="secondary" onClick={load} disabled={loading}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge size="large" color="blue">
+            {batches.length} batches
+          </Badge>
+          <Button variant="secondary" onClick={() => load()} disabled={loading}>
             {loading ? 'Refreshing…' : 'Refresh'}
           </Button>
-          {error && <Text className="text-ui-fg-error">{error}</Text>}
+          <Button onClick={() => setIsCreateModalOpen(true)}>New batch</Button>
         </div>
       </div>
 
-      <div className="px-6 py-8 space-y-4">
-        <Heading level="h2">Filters</Heading>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Variant ID</Label>
-            <Input
-              value={filters.variant_id}
-              onChange={(event) => setFilters({ ...filters, variant_id: event.target.value })}
-              placeholder="variant_01H..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Lot number</Label>
-            <Input
-              value={filters.lot_number}
-              onChange={(event) => setFilters({ ...filters, lot_number: event.target.value })}
-              placeholder="WS-GLP-2409-A2"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>COA status</Label>
-            <Select
-              value={filters.coa_status}
-              onValueChange={(value) => setFilters({ ...filters, coa_status: value as typeof filters.coa_status })}
+      <div className="px-6 py-6">
+        <Tabs defaultValue="batches">
+          <Tabs.List className="mb-6">
+            <Tabs.Trigger value="batches">Batches</Tabs.Trigger>
+            <Tabs.Trigger value="allocations">Allocations</Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value="batches" className="space-y-6">
+            <div className="space-y-4">
+              <Heading level="h2">Filters</Heading>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Variant ID</Label>
+                  <Input
+                    value={filters.variant_id}
+                    onChange={(event) => setFilters({ ...filters, variant_id: event.target.value })}
+                    placeholder="variant_01H..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Lot number</Label>
+                  <Input
+                    value={filters.lot_number}
+                    onChange={(event) => setFilters({ ...filters, lot_number: event.target.value })}
+                    placeholder="WS-GLP-2409-A2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>COA status</Label>
+                  <Select
+                    value={filters.coa_status}
+                    onValueChange={(value) =>
+                      setFilters({ ...filters, coa_status: value as typeof filters.coa_status })
+                    }
+                  >
+                    <Select.Trigger>
+                      <Select.Value placeholder="All batches" />
+                    </Select.Trigger>
+                    <Select.Content>
+                      <Select.Item value="all">All batches</Select.Item>
+                      <Select.Item value="with">With COA</Select.Item>
+                      <Select.Item value="without">Without COA</Select.Item>
+                    </Select.Content>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Min quantity</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={filters.min_quantity}
+                    onChange={(event) => setFilters({ ...filters, min_quantity: event.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max quantity</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={filters.max_quantity}
+                    onChange={(event) => setFilters({ ...filters, max_quantity: event.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button onClick={() => load()} disabled={loading}>
+                  Apply filters
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const cleared = { ...emptyFilters };
+                    setFilters(cleared);
+                    load(cleared);
+                  }}
+                >
+                  Clear filters
+                </Button>
+                {error && <Text className="text-ui-fg-error">{error}</Text>}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Heading level="h2">Existing batches</Heading>
+                <Text className="text-ui-fg-subtle">{batches.length} total</Text>
+              </div>
+
+              <Table>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.HeaderCell>Lot number</Table.HeaderCell>
+                    <Table.HeaderCell>Variant ID</Table.HeaderCell>
+                    <Table.HeaderCell>Quantity</Table.HeaderCell>
+                    <Table.HeaderCell>COA</Table.HeaderCell>
+                    <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {batches.length === 0 ? (
+                    <Table.Row>
+                      <Table.Cell colSpan={5}>
+                        <Text className="text-ui-fg-subtle">No batches found.</Text>
+                      </Table.Cell>
+                    </Table.Row>
+                  ) : (
+                    batches.map((batch) => {
+                      const draft = drafts[batch.id] ?? {
+                        quantity: String(batch.quantity ?? 0),
+                        coa_file_key: batch.coa_file_key ?? '',
+                      };
+                      const rowUploadId = `coa-upload-${batch.id}`;
+
+                      return (
+                        <Table.Row key={batch.id}>
+                          <Table.Cell>
+                            <Text className="font-medium">{batch.lot_number}</Text>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Text className="text-ui-fg-subtle">{batch.variant_id}</Text>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.quantity}
+                              onChange={(event) =>
+                                setDrafts((prev) => ({
+                                  ...prev,
+                                  [batch.id]: { ...draft, quantity: event.target.value },
+                                }))
+                              }
+                            />
+                          </Table.Cell>
+                          <Table.Cell>
+                            <div className="space-y-2">
+                              <Input
+                                value={draft.coa_file_key}
+                                onChange={(event) =>
+                                  setDrafts((prev) => ({
+                                    ...prev,
+                                    [batch.id]: { ...draft, coa_file_key: event.target.value },
+                                  }))
+                                }
+                              />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                  id={rowUploadId}
+                                  type="file"
+                                  accept="application/pdf"
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const file = event.currentTarget.files?.[0];
+                                    void handleUpload(batch.id, file);
+                                    event.currentTarget.value = '';
+                                  }}
+                                />
+                                <Button
+                                  size="small"
+                                  variant="secondary"
+                                  onClick={() => triggerFilePicker(rowUploadId)}
+                                  disabled={uploading[batch.id]}
+                                >
+                                  {draft.coa_file_key ? 'Replace COA' : 'Upload COA'}
+                                </Button>
+                                {uploading[batch.id] && <Text className="text-ui-fg-subtle">Uploading…</Text>}
+                                {uploadErrors[batch.id] && (
+                                  <Text className="text-ui-fg-error">{uploadErrors[batch.id]}</Text>
+                                )}
+                              </div>
+                            </div>
+                          </Table.Cell>
+                          <Table.Cell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button size="small" variant="secondary" onClick={() => handleUpdate(batch.id)}>
+                                Save
+                              </Button>
+                              <Button size="small" variant="danger" onClick={() => handleDelete(batch.id)}>
+                                Delete
+                              </Button>
+                            </div>
+                          </Table.Cell>
+                        </Table.Row>
+                      );
+                    })
+                  )}
+                </Table.Body>
+              </Table>
+            </div>
+          </Tabs.Content>
+
+          <Tabs.Content value="allocations" className="space-y-6">
+            <div className="space-y-2">
+              <Heading level="h2">Batch allocations</Heading>
+              <Text className="text-ui-fg-subtle">
+                Assign lot quantities to specific order line items. This powers COA lookup per customer order.
+              </Text>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Batch ID</Label>
+                <Input
+                  list="batch-options"
+                  value={allocationForm.variant_batch_id}
+                  onChange={(event) =>
+                    setAllocationForm({ ...allocationForm, variant_batch_id: event.target.value })
+                  }
+                  placeholder="vb_01H..."
+                />
+                <datalist id="batch-options">
+                  {batchOptions.map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.label}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              <div className="space-y-2">
+                <Label>Order line item ID</Label>
+                <Input
+                  value={allocationForm.order_line_item_id}
+                  onChange={(event) =>
+                    setAllocationForm({ ...allocationForm, order_line_item_id: event.target.value })
+                  }
+                  placeholder="oli_01H..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={allocationForm.quantity}
+                  onChange={(event) => setAllocationForm({ ...allocationForm, quantity: event.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={handleCreateAllocation}
+                disabled={!allocationForm.variant_batch_id.trim() || !allocationForm.order_line_item_id.trim()}
+              >
+                Add allocation
+              </Button>
+              <Button variant="secondary" onClick={() => loadAllocations()} disabled={allocationLoading}>
+                {allocationLoading ? 'Refreshing…' : 'Refresh'}
+              </Button>
+              {allocationError && <Text className="text-ui-fg-error">{allocationError}</Text>}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Filter by batch ID</Label>
+                <Input
+                  value={allocationFilters.variant_batch_id}
+                  onChange={(event) =>
+                    setAllocationFilters({ ...allocationFilters, variant_batch_id: event.target.value })
+                  }
+                  placeholder="vb_01H..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Filter by order line item ID</Label>
+                <Input
+                  value={allocationFilters.order_line_item_id}
+                  onChange={(event) =>
+                    setAllocationFilters({ ...allocationFilters, order_line_item_id: event.target.value })
+                  }
+                  placeholder="oli_01H..."
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => loadAllocations()} disabled={allocationLoading}>
+                Apply allocation filters
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const cleared = { ...emptyAllocationFilters };
+                  setAllocationFilters(cleared);
+                  loadAllocations(cleared);
+                }}
+              >
+                Clear allocation filters
+              </Button>
+            </div>
+
+            <Table>
+              <Table.Header>
+                <Table.Row>
+                  <Table.HeaderCell>Batch</Table.HeaderCell>
+                  <Table.HeaderCell>Order</Table.HeaderCell>
+                  <Table.HeaderCell>Item</Table.HeaderCell>
+                  <Table.HeaderCell>Quantity</Table.HeaderCell>
+                  <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {allocations.length === 0 ? (
+                  <Table.Row>
+                    <Table.Cell colSpan={5}>
+                      <Text className="text-ui-fg-subtle">No allocations found.</Text>
+                    </Table.Cell>
+                  </Table.Row>
+                ) : (
+                  allocations.map((allocation) => {
+                    const lineItem = allocation.line_item;
+                    const order = allocation.order;
+                    const batchLabel = batchLabelById.get(allocation.variant_batch_id) ?? allocation.variant_batch_id;
+
+                    return (
+                      <Table.Row key={allocation.id}>
+                        <Table.Cell>
+                          <div className="space-y-1">
+                            <Text className="font-medium">{batchLabel}</Text>
+                            <Text className="text-ui-fg-subtle text-xs">{allocation.variant_batch_id}</Text>
+                          </div>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Text className="font-medium">
+                                {order?.display_id ? `#${order.display_id}` : order?.id ?? 'Unknown order'}
+                              </Text>
+                              <Badge size="xsmall" color={getOrderBadgeColor(order?.status)}>
+                                {order?.status ?? 'unknown'}
+                              </Badge>
+                            </div>
+                            <Text className="text-ui-fg-subtle text-xs">{order?.email ?? '—'}</Text>
+                          </div>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="space-y-1">
+                            <Text className="font-medium">
+                              {lineItem?.product_title || lineItem?.title || 'Line item'}
+                            </Text>
+                            <Text className="text-ui-fg-subtle text-xs">
+                              {lineItem?.variant_title || lineItem?.variant_sku || allocation.order_line_item_id}
+                            </Text>
+                          </div>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Text>{allocation.quantity}</Text>
+                        </Table.Cell>
+                        <Table.Cell className="text-right">
+                          <Button size="small" variant="danger" onClick={() => handleDeleteAllocation(allocation.id)}>
+                            Delete
+                          </Button>
+                        </Table.Cell>
+                      </Table.Row>
+                    );
+                  })
+                )}
+              </Table.Body>
+            </Table>
+          </Tabs.Content>
+        </Tabs>
+      </div>
+
+      <FocusModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <FocusModal.Content>
+          <FocusModal.Header>
+            <FocusModal.Title>Create new batch</FocusModal.Title>
+            <FocusModal.Description>
+              Add a new lot, assign quantities, and optionally upload a COA PDF.
+            </FocusModal.Description>
+          </FocusModal.Header>
+          <FocusModal.Body className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Variant ID</Label>
+                <Input
+                  value={formValues.variant_id}
+                  onChange={(event) => setFormValues({ ...formValues, variant_id: event.target.value })}
+                  placeholder="variant_01H..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Lot number</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    value={formValues.lot_number}
+                    onChange={(event) => setFormValues({ ...formValues, lot_number: event.target.value })}
+                    placeholder="PNQEML"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setFormValues({ ...formValues, lot_number: generateLotNumber() })}
+                  >
+                    Generate
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formValues.quantity}
+                  onChange={(event) => setFormValues({ ...formValues, quantity: event.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>COA file key</Label>
+                <Input
+                  value={formValues.coa_file_key}
+                  onChange={(event) => setFormValues({ ...formValues, coa_file_key: event.target.value })}
+                  placeholder="coa/glp-1/lot-a2.pdf"
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <input
+                    id={createUploadInputId}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      void handleCreateUpload(file);
+                      event.currentTarget.value = '';
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => triggerFilePicker(createUploadInputId)}
+                    disabled={createUploadLoading}
+                  >
+                    {formValues.coa_file_key ? 'Replace COA PDF' : 'Upload COA PDF'}
+                  </Button>
+                  {createUploadLoading && <Text className="text-ui-fg-subtle">Uploading…</Text>}
+                  {createUploadError && <Text className="text-ui-fg-error">{createUploadError}</Text>}
+                </div>
+              </div>
+            </div>
+          </FocusModal.Body>
+          <FocusModal.Footer className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsCreateModalOpen(false)}
+              type="button"
             >
-              <Select.Trigger>
-                <Select.Value placeholder="All batches" />
-              </Select.Trigger>
-              <Select.Content>
-                <Select.Item value="all">All batches</Select.Item>
-                <Select.Item value="with">With COA</Select.Item>
-                <Select.Item value="without">Without COA</Select.Item>
-              </Select.Content>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Min quantity</Label>
-            <Input
-              type="number"
-              min={0}
-              value={filters.min_quantity}
-              onChange={(event) => setFilters({ ...filters, min_quantity: event.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Max quantity</Label>
-            <Input
-              type="number"
-              min={0}
-              value={filters.max_quantity}
-              onChange={(event) => setFilters({ ...filters, max_quantity: event.target.value })}
-            />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => load()} disabled={loading}>
-            Apply filters
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const cleared = { ...emptyFilters };
-              setFilters(cleared);
-              load(cleared);
-            }}
-          >
-            Clear filters
-          </Button>
-        </div>
-      </div>
-
-      <div className="px-6 py-8 space-y-4">
-        <div className="flex items-center justify-between">
-          <Heading level="h2">Existing batches</Heading>
-          <Text className="text-ui-fg-subtle">{batches.length} total</Text>
-        </div>
-
-        <Table>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>Lot number</Table.HeaderCell>
-              <Table.HeaderCell>Variant ID</Table.HeaderCell>
-              <Table.HeaderCell>Quantity</Table.HeaderCell>
-              <Table.HeaderCell>COA</Table.HeaderCell>
-              <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {batches.length === 0 ? (
-              <Table.Row>
-                <Table.Cell colSpan={5}>
-                  <Text className="text-ui-fg-subtle">No batches found.</Text>
-                </Table.Cell>
-              </Table.Row>
-            ) : (
-              batches.map((batch) => {
-                const draft = drafts[batch.id] ?? {
-                  quantity: String(batch.quantity ?? 0),
-                  coa_file_key: batch.coa_file_key ?? '',
-                };
-
-                return (
-                  <Table.Row key={batch.id}>
-                    <Table.Cell>
-                      <Text className="font-medium">{batch.lot_number}</Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text className="text-ui-fg-subtle">{batch.variant_id}</Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={draft.quantity}
-                        onChange={(event) =>
-                          setDrafts((prev) => ({
-                            ...prev,
-                            [batch.id]: { ...draft, quantity: event.target.value },
-                          }))
-                        }
-                      />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="space-y-2">
-                        <Input
-                          value={draft.coa_file_key}
-                          onChange={(event) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [batch.id]: { ...draft, coa_file_key: event.target.value },
-                            }))
-                          }
-                        />
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input
-                            type="file"
-                            accept="application/pdf"
-                            className="text-xs"
-                            onChange={(event) => {
-                              const file = event.currentTarget.files?.[0];
-                              void handleUpload(batch.id, file);
-                              event.currentTarget.value = '';
-                            }}
-                          />
-                          {uploading[batch.id] && <Text className="text-ui-fg-subtle">Uploading…</Text>}
-                          {uploadErrors[batch.id] && (
-                            <Text className="text-ui-fg-error">{uploadErrors[batch.id]}</Text>
-                          )}
-                        </div>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button size="small" variant="secondary" onClick={() => handleUpdate(batch.id)}>
-                          Save
-                        </Button>
-                        <Button size="small" variant="danger" onClick={() => handleDelete(batch.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })
-            )}
-          </Table.Body>
-        </Table>
-      </div>
-
-      <div className="px-6 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <Heading level="h2">Batch allocations</Heading>
-          <Badge size="small" color="grey">
-            {allocations.length} allocations
-          </Badge>
-        </div>
-        <Text className="text-ui-fg-subtle">
-          Assign lot quantities to specific order line items. This powers COA lookup per customer order.
-        </Text>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Batch ID</Label>
-            <Input
-              list="batch-options"
-              value={allocationForm.variant_batch_id}
-              onChange={(event) => setAllocationForm({ ...allocationForm, variant_batch_id: event.target.value })}
-              placeholder="vb_01H..."
-            />
-            <datalist id="batch-options">
-              {batchOptions.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {batch.label}
-                </option>
-              ))}
-            </datalist>
-          </div>
-          <div className="space-y-2">
-            <Label>Order line item ID</Label>
-            <Input
-              value={allocationForm.order_line_item_id}
-              onChange={(event) =>
-                setAllocationForm({ ...allocationForm, order_line_item_id: event.target.value })
-              }
-              placeholder="oli_01H..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Quantity</Label>
-            <Input
-              type="number"
-              min={1}
-              value={allocationForm.quantity}
-              onChange={(event) => setAllocationForm({ ...allocationForm, quantity: event.target.value })}
-            />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            onClick={handleCreateAllocation}
-            disabled={!allocationForm.variant_batch_id.trim() || !allocationForm.order_line_item_id.trim()}
-          >
-            Add allocation
-          </Button>
-          <Button variant="secondary" onClick={() => loadAllocations()} disabled={allocationLoading}>
-            {allocationLoading ? 'Refreshing…' : 'Refresh'}
-          </Button>
-          {allocationError && <Text className="text-ui-fg-error">{allocationError}</Text>}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Filter by batch ID</Label>
-            <Input
-              value={allocationFilters.variant_batch_id}
-              onChange={(event) =>
-                setAllocationFilters({ ...allocationFilters, variant_batch_id: event.target.value })
-              }
-              placeholder="vb_01H..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Filter by order line item ID</Label>
-            <Input
-              value={allocationFilters.order_line_item_id}
-              onChange={(event) =>
-                setAllocationFilters({ ...allocationFilters, order_line_item_id: event.target.value })
-              }
-              placeholder="oli_01H..."
-            />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => loadAllocations()} disabled={allocationLoading}>
-            Apply allocation filters
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const cleared = { ...emptyAllocationFilters };
-              setAllocationFilters(cleared);
-              loadAllocations(cleared);
-            }}
-          >
-            Clear allocation filters
-          </Button>
-        </div>
-
-        <Table>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>Batch</Table.HeaderCell>
-              <Table.HeaderCell>Order</Table.HeaderCell>
-              <Table.HeaderCell>Item</Table.HeaderCell>
-              <Table.HeaderCell>Quantity</Table.HeaderCell>
-              <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {allocations.length === 0 ? (
-              <Table.Row>
-                <Table.Cell colSpan={4}>
-                  <Text className="text-ui-fg-subtle">No allocations found.</Text>
-                </Table.Cell>
-              </Table.Row>
-            ) : (
-              allocations.map((allocation) => {
-                const lineItem = allocation.line_item;
-                const order = allocation.order;
-                const batchLabel = batchLabelById.get(allocation.variant_batch_id) ?? allocation.variant_batch_id;
-
-                return (
-                  <Table.Row key={allocation.id}>
-                    <Table.Cell>
-                      <div className="space-y-1">
-                        <Text className="font-medium">{batchLabel}</Text>
-                        <Text className="text-ui-fg-subtle text-xs">{allocation.variant_batch_id}</Text>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Text className="font-medium">
-                            {order?.display_id ? `#${order.display_id}` : order?.id ?? 'Unknown order'}
-                          </Text>
-                          <Badge size="xsmall" color={getOrderBadgeColor(order?.status)}>
-                            {order?.status ?? 'unknown'}
-                          </Badge>
-                        </div>
-                        <Text className="text-ui-fg-subtle text-xs">{order?.email ?? '—'}</Text>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="space-y-1">
-                        <Text className="font-medium">
-                          {lineItem?.product_title || lineItem?.title || 'Line item'}
-                        </Text>
-                        <Text className="text-ui-fg-subtle text-xs">
-                          {lineItem?.variant_title || lineItem?.variant_sku || allocation.order_line_item_id}
-                        </Text>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text>{allocation.quantity}</Text>
-                    </Table.Cell>
-                    <Table.Cell className="text-right">
-                      <Button size="small" variant="danger" onClick={() => handleDeleteAllocation(allocation.id)}>
-                        Delete
-                      </Button>
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })
-            )}
-          </Table.Body>
-        </Table>
-      </div>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={!formValues.variant_id.trim() || !formValues.lot_number.trim()}
+            >
+              Create batch
+            </Button>
+          </FocusModal.Footer>
+        </FocusModal.Content>
+      </FocusModal>
     </Container>
   );
 };
