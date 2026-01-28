@@ -122,6 +122,11 @@ export const syncInventoryLevelsForVariants = async (
     return;
   }
 
+  const allVariantIds = normalizeIds(variants.map((variant) => variant.id));
+  if (!allVariantIds.length) {
+    return;
+  }
+
   const batchService = scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const batches = await batchService.listVariantBatches({ variant_id: allVariantIds });
 
