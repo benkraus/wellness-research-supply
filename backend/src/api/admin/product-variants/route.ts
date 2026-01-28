@@ -35,6 +35,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     (variants ?? []).forEach((variant) => {
+      if (variant.manage_inventory === false) {
+        return;
+      }
       (variant as { inventory_quantity?: number }).inventory_quantity = totals.get(variant.id) ?? 0;
     });
   }

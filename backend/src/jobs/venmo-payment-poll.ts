@@ -24,6 +24,7 @@ import {
 } from "../lib/constants"
 import { VenmoClient } from "../lib/venmo-api/client"
 import { EmailTemplates } from "../modules/email-notifications/templates"
+import { releaseVariantBatchAllocationsForOrder } from "../lib/variant-batch-allocations"
 
 const VENMO_PROVIDER_ID = "venmo"
 
@@ -42,6 +43,26 @@ function getLogger(container: MedusaContainer): Logger {
     return container.resolve("logger") as Logger
   } catch (error) {
     return console as unknown as Logger
+  }
+}
+
+async function releaseAllocationsForSession(
+  container: MedusaContainer,
+  logger: Logger,
+  session: { payment_collection?: { metadata?: Record<string, unknown> | null } | null }
+) {
+  const orderId =
+    (session.payment_collection?.metadata?.venmo_order_id as string | undefined) ??
+    (session.payment_collection?.metadata?.order_id as string | undefined)
+
+  if (!orderId) {
+    return
+  }
+
+  try {
+    await releaseVariantBatchAllocationsForOrder(orderId, container)
+  } catch (error) {
+    logger.warn(`Failed to release batch allocations for order ${orderId}: ${error}`)
   }
 }
 
@@ -172,6 +193,8 @@ export default async function venmoPaymentPollJob(container: MedusaContainer) {
         currency_code: session.currency_code,
         metadata: { ...(session.metadata ?? {}), venmo_poll: stoppedState },
       })
+
+      await releaseAllocationsForSession(container, logger, session)
 
       continue
     }
@@ -385,6 +408,8 @@ export default async function venmoPaymentPollJob(container: MedusaContainer) {
           currency_code: session.currency_code,
           metadata: { ...(session.metadata ?? {}), venmo_poll: canceledState },
         })
+
+        await releaseAllocationsForSession(container, logger, session)
 
         continue
       }
