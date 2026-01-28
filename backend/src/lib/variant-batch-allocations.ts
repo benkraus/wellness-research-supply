@@ -41,6 +41,20 @@ export const allocateVariantBatchesForOrder = async (orderId: string, container:
     );
 
     const batches = await batchService.listVariantBatches({ variant_id: variantId });
+    const batchIds = batches.map((batch) => batch.id);
+    const allocations = batchIds.length
+      ? await batchService.listVariantBatchAllocations({ variant_batch_id: batchIds })
+      : [];
+
+    const allocatedByBatch = new Map<string, number>();
+    allocations.forEach((allocation) => {
+      const current = allocatedByBatch.get(allocation.variant_batch_id) ?? 0;
+      allocatedByBatch.set(
+        allocation.variant_batch_id,
+        current + Number(allocation.quantity ?? 0)
+      );
+    });
+
     const availableBatches = batches
       .filter((batch) => Number(batch.quantity ?? 0) > 0)
       .sort(sortByCreatedAt);
@@ -56,7 +70,8 @@ export const allocateVariantBatchesForOrder = async (orderId: string, container:
         break;
       }
 
-      const available = Number(batch.quantity ?? 0);
+      const allocated = allocatedByBatch.get(batch.id) ?? 0;
+      const available = Number(batch.quantity ?? 0) - allocated;
       if (!Number.isFinite(available) || available <= 0) {
         continue;
       }

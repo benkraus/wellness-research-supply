@@ -45,7 +45,7 @@ export const remapVariantResponse = (variant: any) => {
     return variant;
   }
 
-  const prices = (variant.price_set?.prices ?? []).map((price: PriceSetPrice) => ({
+  const prices = variant.price_set?.prices?.map((price: PriceSetPrice) => ({
     id: price.id,
     amount: price.amount,
     currency_code: price.currency_code,
