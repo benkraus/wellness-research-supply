@@ -873,71 +873,84 @@ const VariantBatchesSettingsPage = () => {
               Add a new lot, assign quantities, and optionally upload a COA PDF.
             </FocusModal.Description>
           </FocusModal.Header>
-          <FocusModal.Body className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Variant ID</Label>
-                <Input
-                  value={formValues.variant_id}
-                  onChange={(event) => setFormValues({ ...formValues, variant_id: event.target.value })}
-                  placeholder="variant_01H..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Lot number</Label>
-                <div className="flex flex-wrap gap-2">
+          <FocusModal.Body className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Variant ID</Label>
+                  <Input
+                    value={formValues.variant_id}
+                    onChange={(event) => setFormValues({ ...formValues, variant_id: event.target.value })}
+                    placeholder="variant_01H..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Lot number</Label>
+                    <Button
+                      type="button"
+                      size="small"
+                      variant="secondary"
+                      onClick={() => setFormValues({ ...formValues, lot_number: generateLotNumber() })}
+                    >
+                      Generate
+                    </Button>
+                  </div>
                   <Input
                     value={formValues.lot_number}
                     onChange={(event) => setFormValues({ ...formValues, lot_number: event.target.value })}
                     placeholder="PNQEML"
                   />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setFormValues({ ...formValues, lot_number: generateLotNumber() })}
-                  >
-                    Generate
-                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formValues.quantity}
+                    onChange={(event) => setFormValues({ ...formValues, quantity: event.target.value })}
+                  />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={formValues.quantity}
-                  onChange={(event) => setFormValues({ ...formValues, quantity: event.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>COA file key</Label>
-                <Input
-                  value={formValues.coa_file_key}
-                  onChange={(event) => setFormValues({ ...formValues, coa_file_key: event.target.value })}
-                  placeholder="coa/glp-1/lot-a2.pdf"
-                />
-                <div className="flex flex-wrap items-center gap-2 pt-2">
-                  <input
-                    id={createUploadInputId}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      void handleCreateUpload(file);
-                      event.currentTarget.value = '';
-                    }}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>COA file key</Label>
+                  <Input
+                    value={formValues.coa_file_key}
+                    onChange={(event) => setFormValues({ ...formValues, coa_file_key: event.target.value })}
+                    placeholder="coa/glp-1/lot-a2.pdf"
                   />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => triggerFilePicker(createUploadInputId)}
-                    disabled={createUploadLoading}
-                  >
-                    {formValues.coa_file_key ? 'Replace COA PDF' : 'Upload COA PDF'}
-                  </Button>
-                  {createUploadLoading && <Text className="text-ui-fg-subtle">Uploading…</Text>}
-                  {createUploadError && <Text className="text-ui-fg-error">{createUploadError}</Text>}
+                </div>
+                <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle p-4">
+                  <div className="space-y-3">
+                    <Text size="small" className="text-ui-fg-subtle">
+                      Upload a COA PDF to link it with this lot.
+                    </Text>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        id={createUploadInputId}
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          void handleCreateUpload(file);
+                          event.currentTarget.value = '';
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="secondary"
+                        onClick={() => triggerFilePicker(createUploadInputId)}
+                        disabled={createUploadLoading}
+                      >
+                        {formValues.coa_file_key ? 'Replace COA PDF' : 'Upload COA PDF'}
+                      </Button>
+                      {createUploadLoading && <Text className="text-ui-fg-subtle">Uploading…</Text>}
+                      {createUploadError && <Text className="text-ui-fg-error">{createUploadError}</Text>}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
