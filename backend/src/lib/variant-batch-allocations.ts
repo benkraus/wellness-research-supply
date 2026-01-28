@@ -105,6 +105,21 @@ export const releaseVariantBatchAllocationsForOrder = async (orderId: string, co
   const batchService = container.resolve(VARIANT_BATCH_MODULE) as VariantBatchModuleService;
 
   let lineItems: Array<OrderLineItemDTO> = [];
+  const deleteAllocationsByOrderId = async () => {
+    try {
+      const allocations = await batchService.listVariantBatchAllocations({
+        metadata: { order_id: orderId } as Record<string, unknown>,
+      });
+
+      if (allocations.length) {
+        await batchService.deleteVariantBatchAllocations(
+          allocations.map((allocation) => allocation.id)
+        );
+      }
+    } catch {
+      // ignore - best-effort fallback
+    }
+  };
 
   try {
     const order = await orderService.retrieveOrder(orderId, {
@@ -112,10 +127,12 @@ export const releaseVariantBatchAllocationsForOrder = async (orderId: string, co
     });
     lineItems = Array.isArray(order.items) ? (order.items as OrderLineItemDTO[]) : [];
   } catch (error) {
+    await deleteAllocationsByOrderId();
     return;
   }
 
   if (!lineItems.length) {
+    await deleteAllocationsByOrderId();
     return;
   }
 

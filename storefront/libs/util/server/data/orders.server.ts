@@ -1,5 +1,5 @@
 import { medusaError } from '@libs/util/medusaError';
-import { sdk } from '@libs/util/server/client.server';
+import { baseMedusaConfig, getPublishableKey, sdk } from '@libs/util/server/client.server';
 import { withAuthHeaders } from '../auth.server';
 
 export const retrieveOrder = withAuthHeaders(async (request, authHeaders, id: string) => {
@@ -29,3 +29,37 @@ export const listOrdersWithCount = withAuthHeaders(
       .catch(medusaError);
   },
 );
+
+export const listOrderVariantBatches = withAuthHeaders(async (request, authHeaders, id: string) => {
+  const publishableKey = await getPublishableKey();
+  const url = new URL(`/store/orders/${id}/variant-batches`, baseMedusaConfig.baseUrl);
+
+  const response = await fetch(url, {
+    headers: {
+      accept: 'application/json',
+      ...(publishableKey ? { 'x-publishable-api-key': publishableKey } : {}),
+      ...authHeaders,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to load batch allocations.');
+  }
+
+  return (await response.json()) as {
+    order_id: string;
+    items: Array<{
+      line_item_id: string;
+      product_title?: string | null;
+      variant_title?: string | null;
+      quantity: number;
+      batches: Array<{
+        id: string;
+        lot_number: string;
+        quantity: number;
+        coa_available: boolean;
+        coa_url: string | null;
+      }>;
+    }>;
+  };
+});

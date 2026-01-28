@@ -2,6 +2,7 @@ import { Modules } from '@medusajs/framework/utils'
 import { INotificationModuleService, IOrderModuleService, IPaymentModuleService } from '@medusajs/framework/types'
 import { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa'
 import { ORDERS_FROM_EMAIL } from '../lib/constants'
+import { allocateVariantBatchesForOrder } from '../lib/variant-batch-allocations'
 import { sendTelegramOrderPlacedNotification } from '../lib/telegram'
 import { EmailTemplates } from '../modules/email-notifications/templates'
 
@@ -25,6 +26,12 @@ export default async function orderPlacedHandler({
     ]
   })
   const shippingAddress = await (orderModuleService as any).orderAddressService_.retrieve(order.shipping_address.id)
+
+  try {
+    await allocateVariantBatchesForOrder(order.id, container)
+  } catch (error) {
+    console.error('Error allocating variant batches for order:', error)
+  }
 
   try {
     await notificationModuleService.createNotifications({

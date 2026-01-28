@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { VARIANT_BATCH_MODULE } from '../../../modules/variant-batch';
 import type VariantBatchModuleService from '../../../modules/variant-batch/service';
+import { syncInventoryLevelsForVariants } from '../../../lib/variant-batch-inventory';
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
@@ -75,6 +76,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     coa_file_key: body.coa_file_key ?? null,
     metadata: body.metadata ?? null,
   });
+
+  await syncInventoryLevelsForVariants([batch.variant_id], req.scope);
 
   return res.status(201).json({ batch });
 };

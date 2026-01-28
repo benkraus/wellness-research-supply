@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { VARIANT_BATCH_MODULE } from '../../../../modules/variant-batch';
 import type VariantBatchModuleService from '../../../../modules/variant-batch/service';
+import { syncInventoryLevelsForVariants } from '../../../../lib/variant-batch-inventory';
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
@@ -39,8 +40,14 @@ export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json({ error: 'No valid updates provided.' });
   }
 
+  const existing = await service.retrieveVariantBatch(id);
   const updated = await service.updateVariantBatches({ selector: { id }, data: updates });
   const batch = Array.isArray(updated) ? updated[0] : updated;
+
+  const variantIds = [existing.variant_id, batch.variant_id].filter(
+    (variantId): variantId is string => typeof variantId === 'string' && variantId.length > 0,
+  );
+  await syncInventoryLevelsForVariants(variantIds, req.scope);
 
   return res.status(200).json({ batch });
 };
@@ -49,7 +56,10 @@ export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
   const service = req.scope.resolve<VariantBatchModuleService>(VARIANT_BATCH_MODULE);
   const { id } = req.params;
 
+  const existing = await service.retrieveVariantBatch(id);
   await service.deleteVariantBatches(id);
+
+  await syncInventoryLevelsForVariants([existing.variant_id], req.scope);
 
   return res.status(204).end();
 };
