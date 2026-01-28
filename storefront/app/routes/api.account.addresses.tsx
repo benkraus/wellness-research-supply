@@ -1,6 +1,6 @@
 import { addressPayload, addressToMedusaAddress } from '@libs/util/addresses';
 import { normalizePhoneNumber } from '@libs/util/phoneNumber';
-import { baseMedusaConfig, sdk } from '@libs/util/server/client.server';
+import { baseMedusaConfig } from '@libs/util/server/client.server';
 import { getAuthHeaders } from '@libs/util/server/auth.server';
 import { getCustomer } from '@libs/util/server/data/customer.server';
 import { data } from 'react-router';
@@ -66,12 +66,21 @@ export const action = async ({ request }: { request: Request }) => {
       if (setDefault) {
         const body = await response.json().catch(() => null);
         const createdAddress = body?.customer?.addresses?.[body.customer.addresses.length - 1];
-        if (createdAddress?.id) {
-          await sdk.store.customer.update(
-            { default_shipping_address_id: createdAddress.id },
-            {},
-            authHeaders as Record<string, string>,
-          );
+        if (!createdAddress?.id) {
+          return data({ error: 'Address saved, but could not set default.' }, { status: 400 });
+        }
+
+        const defaultResponse = await fetch(
+          new URL(`/store/customers/me/addresses/${createdAddress.id}`, baseMedusaConfig.baseUrl),
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ is_default_shipping: true }),
+          },
+        );
+
+        if (!defaultResponse.ok) {
+          return data({ error: 'Address saved, but could not set default.' }, { status: defaultResponse.status });
         }
       }
 
@@ -85,6 +94,9 @@ export const action = async ({ request }: { request: Request }) => {
 
       const address = buildAddressFromForm(formData);
       const payload = addressPayload(addressToMedusaAddress(address));
+      if (setDefault) {
+        (payload as Record<string, unknown>).is_default_shipping = true;
+      }
 
       const response = await fetch(
         new URL(`/store/customers/me/addresses/${addressId}`, baseMedusaConfig.baseUrl),
@@ -97,14 +109,6 @@ export const action = async ({ request }: { request: Request }) => {
 
       if (!response.ok) {
         return data({ error: 'Unable to update address.' }, { status: response.status });
-      }
-
-      if (setDefault) {
-        await sdk.store.customer.update(
-          { default_shipping_address_id: addressId },
-          {},
-          authHeaders as Record<string, string>,
-        );
       }
 
       return data({ success: true });
@@ -135,11 +139,18 @@ export const action = async ({ request }: { request: Request }) => {
         return data({ error: 'Address ID is required.' }, { status: 400 });
       }
 
-      await sdk.store.customer.update(
-        { default_shipping_address_id: addressId },
-        {},
-        authHeaders as Record<string, string>,
+      const response = await fetch(
+        new URL(`/store/customers/me/addresses/${addressId}`, baseMedusaConfig.baseUrl),
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ is_default_shipping: true }),
+        },
       );
+
+      if (!response.ok) {
+        return data({ error: 'Unable to set default address.' }, { status: response.status });
+      }
 
       return data({ success: true });
     }

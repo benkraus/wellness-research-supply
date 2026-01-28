@@ -5,9 +5,9 @@ export const selectInitialShippingAddress = (cart: StoreCart, customer?: StoreCu
 
   if (!customer || !customer?.addresses?.length) return null;
 
-  const customerAddress = customer?.default_shipping_address_id
-    ? customer.addresses?.find((a) => a.id === customer?.default_shipping_address_id)
-    : customer?.addresses?.[0];
+  const customerAddress =
+    customer.addresses?.find((address) => address.is_default_shipping) ??
+    customer?.addresses?.[0];
 
   return (customerAddress as StoreCartAddress) || null;
 };

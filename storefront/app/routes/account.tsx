@@ -379,7 +379,7 @@ export default function AccountRoute() {
                         )}
 
                         {addresses.map((address) => {
-                          const isDefault = customer.default_shipping_address_id === address.id;
+                          const isDefault = address.is_default_shipping;
                           const formattedAddress = medusaAddressToAddress(address);
                           const isEditing = editingAddressId === address.id;
 
