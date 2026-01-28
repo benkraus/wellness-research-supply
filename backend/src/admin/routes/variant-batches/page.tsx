@@ -19,6 +19,9 @@ interface VariantBatch {
   variant_id: string;
   lot_number: string;
   quantity: number;
+  received_at?: string | null;
+  invoice_url?: string | null;
+  lab_invoice_url?: string | null;
   coa_file_key?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -62,6 +65,9 @@ interface VariantSummary {
   id: string;
   title?: string | null;
   sku?: string | null;
+  product?: {
+    title?: string | null;
+  } | null;
 }
 
 const emptyForm = {
@@ -69,6 +75,9 @@ const emptyForm = {
   lot_number: '',
   quantity: '0',
   coa_file_key: '',
+  received_at: '',
+  invoice_url: '',
+  lab_invoice_url: '',
 };
 
 const emptyFilters = {
@@ -183,13 +192,45 @@ const fetchProductVariants = async (productId: string) => {
   return (await response.json()) as { variants: VariantSummary[] };
 };
 
+const fetchVariantsByIds = async (variantIds: string[]) => {
+  const ids = Array.from(new Set(variantIds.filter(Boolean)));
+  if (!ids.length) {
+    return { variants: [] as VariantSummary[] };
+  }
+
+  const chunks: string[][] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    chunks.push(ids.slice(i, i + chunkSize));
+  }
+
+  const results: VariantSummary[] = [];
+
+  for (const chunk of chunks) {
+    const params = new URLSearchParams();
+    params.set('limit', String(chunk.length));
+    params.set('fields', 'id,title,sku,product.title');
+    chunk.forEach((id) => params.append('id', id));
+
+    const response = await fetch(`/admin/product-variants?${params.toString()}`, {
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to load variants.');
+    }
+
+    const payload = (await response.json()) as { variants: VariantSummary[] };
+    results.push(...(payload.variants ?? []));
+  }
+
+  return { variants: results };
+};
+
 const VariantBatchesSettingsPage = () => {
   const [formValues, setFormValues] = useState(emptyForm);
   const [filters, setFilters] = useState(emptyFilters);
   const [batches, setBatches] = useState<VariantBatch[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, { quantity: string; coa_file_key: string }>>({});
-  const [uploading, setUploading] = useState<Record<string, boolean>>({});
-  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const [createUploadLoading, setCreateUploadLoading] = useState(false);
   const [createUploadError, setCreateUploadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -209,6 +250,8 @@ const VariantBatchesSettingsPage = () => {
   const [variants, setVariants] = useState<VariantSummary[]>([]);
   const [variantsLoading, setVariantsLoading] = useState(false);
   const [variantsError, setVariantsError] = useState<string | null>(null);
+  const [variantLabels, setVariantLabels] = useState<Record<string, string>>({});
+  const [variantLabelsError, setVariantLabelsError] = useState<string | null>(null);
 
   const load = async (nextFilters: typeof emptyFilters = filters) => {
     try {
@@ -245,6 +288,41 @@ const VariantBatchesSettingsPage = () => {
   useEffect(() => {
     loadAllocations();
   }, []);
+
+  useEffect(() => {
+    const variantIds = Array.from(new Set(batches.map((batch) => batch.variant_id).filter(Boolean)));
+    if (!variantIds.length) {
+      setVariantLabels({});
+      setVariantLabelsError(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    void (async () => {
+      try {
+        setVariantLabelsError(null);
+        const data = await fetchVariantsByIds(variantIds);
+        if (!isMounted) return;
+
+        const next: Record<string, string> = {};
+        data.variants.forEach((variant) => {
+          const productTitle = variant.product?.title ?? 'Product';
+          const variantTitle = variant.title ?? variant.sku ?? variant.id;
+          next[variant.id] = `${productTitle} · ${variantTitle}`;
+        });
+        setVariantLabels(next);
+      } catch (err) {
+        if (!isMounted) return;
+        setVariantLabels({});
+        setVariantLabelsError('Unable to load variant names.');
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [batches]);
 
   useEffect(() => {
     if (!isCreateModalOpen) return;
@@ -295,31 +373,32 @@ const VariantBatchesSettingsPage = () => {
     })();
   }, [selectedProductId]);
 
-  useEffect(() => {
-    setDrafts((prev) => {
-      const next = { ...prev };
-      batches.forEach((batch) => {
-        next[batch.id] = {
-          quantity: String(batch.quantity ?? 0),
-          coa_file_key: batch.coa_file_key ?? '',
-        };
-      });
-      return next;
-    });
-  }, [batches]);
-
   const batchOptions = useMemo(
-    () => batches.map((batch) => ({ id: batch.id, label: `${batch.lot_number} · ${batch.variant_id}` })),
+    () =>
+      batches.map((batch) => ({
+        id: batch.id,
+        label: `${batch.lot_number} · ${variantLabels[batch.variant_id] ?? batch.variant_id}`,
+      })),
+    [batches, variantLabels],
+  );
+
+  const activeBatches = useMemo(
+    () => batches.filter((batch) => Number(batch.quantity ?? 0) > 0),
+    [batches],
+  );
+
+  const pastBatches = useMemo(
+    () => batches.filter((batch) => Number(batch.quantity ?? 0) <= 0),
     [batches],
   );
 
   const batchLabelById = useMemo(() => {
     const map = new Map<string, string>();
     batches.forEach((batch) => {
-      map.set(batch.id, `${batch.lot_number} · ${batch.variant_id}`);
+      map.set(batch.id, `${batch.lot_number} · ${variantLabels[batch.variant_id] ?? batch.variant_id}`);
     });
     return map;
-  }, [batches]);
+  }, [batches, variantLabels]);
 
   const productOptions = useMemo(() => {
     return [...products]
@@ -367,6 +446,9 @@ const VariantBatchesSettingsPage = () => {
           lot_number: formValues.lot_number.trim(),
           quantity: toNumber(formValues.quantity),
           coa_file_key: formValues.coa_file_key.trim() || null,
+          received_at: formValues.received_at || null,
+          invoice_url: formValues.invoice_url.trim() || null,
+          lab_invoice_url: formValues.lab_invoice_url.trim() || null,
         }),
       });
 
@@ -381,114 +463,6 @@ const VariantBatchesSettingsPage = () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error.';
       setError(message);
-    }
-  };
-
-  const handleUpdate = async (batchId: string) => {
-    const draft = drafts[batchId];
-    if (!draft) return;
-
-    try {
-      setError(null);
-      const response = await fetch(`/admin/variant-batches/${batchId}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          quantity: toNumber(draft.quantity),
-          coa_file_key: draft.coa_file_key.trim() || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Unable to update batch.');
-      }
-
-      await load();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unexpected error.';
-      setError(message);
-    }
-  };
-
-  const handleDelete = async (batchId: string) => {
-    try {
-      setError(null);
-      const response = await fetch(`/admin/variant-batches/${batchId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Unable to delete batch.');
-      }
-
-      await load();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unexpected error.';
-      setError(message);
-    }
-  };
-
-  const handleUpload = async (batchId: string, file?: File | null) => {
-    if (!file) return;
-
-    try {
-      setUploadErrors((prev) => ({ ...prev, [batchId]: '' }));
-      setUploading((prev) => ({ ...prev, [batchId]: true }));
-
-      const response = await fetch(`/admin/variant-batches/${batchId}/coa-upload`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          mimeType: file.type || 'application/pdf',
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Unable to request upload URL.');
-      }
-
-      const { upload_url, file_key } = (await response.json()) as { upload_url: string; file_key: string };
-
-      const uploadResult = await fetch(upload_url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'application/pdf',
-        },
-        body: file,
-      });
-
-      if (!uploadResult.ok) {
-        throw new Error('Upload failed.');
-      }
-
-      await fetch(`/admin/variant-batches/${batchId}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          coa_file_key: file_key,
-        }),
-      });
-
-      await load();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed.';
-      setUploadErrors((prev) => ({ ...prev, [batchId]: message }));
-    } finally {
-      setUploading((prev) => ({ ...prev, [batchId]: false }));
     }
   };
 
@@ -698,106 +672,127 @@ const VariantBatchesSettingsPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Heading level="h2">Existing batches</Heading>
-                <Text className="text-ui-fg-subtle">{batches.length} total</Text>
+                <Text className="text-ui-fg-subtle">{activeBatches.length} active</Text>
               </div>
 
               <Table>
                 <Table.Header>
                   <Table.Row>
                     <Table.HeaderCell>Lot number</Table.HeaderCell>
-                    <Table.HeaderCell>Variant ID</Table.HeaderCell>
+                    <Table.HeaderCell>Variant</Table.HeaderCell>
                     <Table.HeaderCell>Quantity</Table.HeaderCell>
                     <Table.HeaderCell>COA</Table.HeaderCell>
-                    <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                  {batches.length === 0 ? (
+                  {activeBatches.length === 0 ? (
                     <Table.Row>
-                      <Table.Cell colSpan={5}>
+                      <Table.Cell colSpan={4}>
                         <Text className="text-ui-fg-subtle">No batches found.</Text>
                       </Table.Cell>
                     </Table.Row>
                   ) : (
-                    batches.map((batch) => {
-                      const draft = drafts[batch.id] ?? {
-                        quantity: String(batch.quantity ?? 0),
-                        coa_file_key: batch.coa_file_key ?? '',
-                      };
-                      const rowUploadId = `coa-upload-${batch.id}`;
-
+                    activeBatches.map((batch) => {
                       return (
                         <Table.Row key={batch.id}>
                           <Table.Cell>
-                            <Text className="font-medium">{batch.lot_number}</Text>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="small"
+                              className="px-0"
+                              onClick={() => window.location.assign(`/app/variant-batches/${batch.id}`)}
+                            >
+                              {batch.lot_number}
+                            </Button>
                           </Table.Cell>
                           <Table.Cell>
-                            <Text className="text-ui-fg-subtle">{batch.variant_id}</Text>
+                            <Text className="font-medium">
+                              {variantLabels[batch.variant_id] ?? batch.variant_id}
+                            </Text>
+                            {variantLabels[batch.variant_id] && (
+                              <Text size="small" className="text-ui-fg-subtle">
+                                {batch.variant_id}
+                              </Text>
+                            )}
+                            {variantLabelsError && (
+                              <Text size="small" className="text-ui-fg-error">
+                                {variantLabelsError}
+                              </Text>
+                            )}
                           </Table.Cell>
                           <Table.Cell>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={draft.quantity}
-                              onChange={(event) =>
-                                setDrafts((prev) => ({
-                                  ...prev,
-                                  [batch.id]: { ...draft, quantity: event.target.value },
-                                }))
-                              }
-                            />
+                            <Text>{batch.quantity}</Text>
                           </Table.Cell>
                           <Table.Cell>
-                            <div className="space-y-2">
-                              <Input
-                                value={draft.coa_file_key}
-                                onChange={(event) =>
-                                  setDrafts((prev) => ({
-                                    ...prev,
-                                    [batch.id]: { ...draft, coa_file_key: event.target.value },
-                                  }))
-                                }
-                              />
-                              <div className="flex flex-wrap items-center gap-2">
-                                <input
-                                  id={rowUploadId}
-                                  type="file"
-                                  accept="application/pdf"
-                                  className="hidden"
-                                  onChange={(event) => {
-                                    const file = event.currentTarget.files?.[0];
-                                    void handleUpload(batch.id, file);
-                                    event.currentTarget.value = '';
-                                  }}
-                                />
-                                <Button
-                                  size="small"
-                                  variant="secondary"
-                                  onClick={() => triggerFilePicker(rowUploadId)}
-                                  disabled={uploading[batch.id]}
-                                >
-                                  {draft.coa_file_key ? 'Replace COA' : 'Upload COA'}
-                                </Button>
-                                {uploading[batch.id] && <Text className="text-ui-fg-subtle">Uploading…</Text>}
-                                {uploadErrors[batch.id] && (
-                                  <Text className="text-ui-fg-error">{uploadErrors[batch.id]}</Text>
-                                )}
-                              </div>
-                            </div>
-                          </Table.Cell>
-                          <Table.Cell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button size="small" variant="secondary" onClick={() => handleUpdate(batch.id)}>
-                                Save
-                              </Button>
-                              <Button size="small" variant="danger" onClick={() => handleDelete(batch.id)}>
-                                Delete
-                              </Button>
-                            </div>
+                            <Badge color={batch.coa_file_key ? 'green' : 'orange'}>
+                              {batch.coa_file_key ? 'On file' : 'Missing'}
+                            </Badge>
                           </Table.Cell>
                         </Table.Row>
                       );
                     })
+                  )}
+                </Table.Body>
+              </Table>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Heading level="h2">Past batches</Heading>
+                <Text className="text-ui-fg-subtle">{pastBatches.length} archived</Text>
+              </div>
+
+              <Table>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.HeaderCell>Lot number</Table.HeaderCell>
+                    <Table.HeaderCell>Variant</Table.HeaderCell>
+                    <Table.HeaderCell>Quantity</Table.HeaderCell>
+                    <Table.HeaderCell>COA</Table.HeaderCell>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {pastBatches.length === 0 ? (
+                    <Table.Row>
+                      <Table.Cell colSpan={4}>
+                        <Text className="text-ui-fg-subtle">No past batches.</Text>
+                      </Table.Cell>
+                    </Table.Row>
+                  ) : (
+                    pastBatches.map((batch) => (
+                      <Table.Row key={batch.id}>
+                        <Table.Cell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="small"
+                            className="px-0"
+                            onClick={() => window.location.assign(`/app/variant-batches/${batch.id}`)}
+                          >
+                            {batch.lot_number}
+                          </Button>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Text className="font-medium">
+                            {variantLabels[batch.variant_id] ?? batch.variant_id}
+                          </Text>
+                          {variantLabels[batch.variant_id] && (
+                            <Text size="small" className="text-ui-fg-subtle">
+                              {batch.variant_id}
+                            </Text>
+                          )}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Text>{batch.quantity}</Text>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Badge color={batch.coa_file_key ? 'green' : 'orange'}>
+                            {batch.coa_file_key ? 'On file' : 'Missing'}
+                          </Badge>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))
                   )}
                 </Table.Body>
               </Table>
@@ -1076,6 +1071,14 @@ const VariantBatchesSettingsPage = () => {
                     onChange={(event) => setFormValues({ ...formValues, quantity: event.target.value })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Received date</Label>
+                  <Input
+                    type="date"
+                    value={formValues.received_at}
+                    onChange={(event) => setFormValues({ ...formValues, received_at: event.target.value })}
+                  />
+                </div>
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1084,6 +1087,24 @@ const VariantBatchesSettingsPage = () => {
                     value={formValues.coa_file_key}
                     onChange={(event) => setFormValues({ ...formValues, coa_file_key: event.target.value })}
                     placeholder="coa/glp-1/lot-a2.pdf"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Supplier invoice link</Label>
+                  <Input
+                    type="url"
+                    value={formValues.invoice_url}
+                    onChange={(event) => setFormValues({ ...formValues, invoice_url: event.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Lab testing invoice link</Label>
+                  <Input
+                    type="url"
+                    value={formValues.lab_invoice_url}
+                    onChange={(event) => setFormValues({ ...formValues, lab_invoice_url: event.target.value })}
+                    placeholder="https://..."
                   />
                 </div>
                 <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle p-4">

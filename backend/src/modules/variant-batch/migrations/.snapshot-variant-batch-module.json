@@ -33,6 +33,34 @@
           "nullable": false,
           "mappedType": "text"
         },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 6,
+          "mappedType": "datetime"
+        },
+        "invoice_url": {
+          "name": "invoice_url",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "lab_invoice_url": {
+          "name": "lab_invoice_url",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
         "coa_file_key": {
           "name": "coa_file_key",
           "type": "text",

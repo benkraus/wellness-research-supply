@@ -20,6 +20,9 @@ export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
     lot_number?: string;
     quantity?: number | string;
     coa_file_key?: string | null;
+    received_at?: string | null;
+    invoice_url?: string | null;
+    lab_invoice_url?: string | null;
     metadata?: Record<string, unknown> | null;
   };
 
@@ -28,7 +31,14 @@ export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
   if (typeof body.variant_id === 'string') updates.variant_id = body.variant_id;
   if (typeof body.lot_number === 'string') updates.lot_number = body.lot_number;
   if (typeof body.coa_file_key !== 'undefined') updates.coa_file_key = body.coa_file_key;
+  if (typeof body.invoice_url !== 'undefined') updates.invoice_url = body.invoice_url;
+  if (typeof body.lab_invoice_url !== 'undefined') updates.lab_invoice_url = body.lab_invoice_url;
   if (typeof body.metadata !== 'undefined') updates.metadata = body.metadata;
+  if (typeof body.received_at !== 'undefined') {
+    const parsedReceivedAt = body.received_at ? new Date(body.received_at) : null;
+    updates.received_at =
+      parsedReceivedAt && !Number.isNaN(parsedReceivedAt.getTime()) ? parsedReceivedAt : null;
+  }
   if (typeof body.quantity !== 'undefined') {
     const quantity = Number(body.quantity);
     if (Number.isFinite(quantity)) {

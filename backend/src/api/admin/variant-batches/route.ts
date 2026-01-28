@@ -60,6 +60,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     lot_number?: string;
     quantity?: number | string;
     coa_file_key?: string | null;
+    received_at?: string | null;
+    invoice_url?: string | null;
+    lab_invoice_url?: string | null;
     metadata?: Record<string, unknown> | null;
   };
 
@@ -69,11 +72,19 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const quantity = Number(body.quantity ?? 0);
 
+  const parsedReceivedAt = body.received_at ? new Date(body.received_at) : null;
+  const receivedAt = parsedReceivedAt && !Number.isNaN(parsedReceivedAt.getTime())
+    ? parsedReceivedAt
+    : null;
+
   const batch = await service.createVariantBatches({
     variant_id: body.variant_id,
     lot_number: body.lot_number,
     quantity: Number.isFinite(quantity) ? quantity : 0,
     coa_file_key: body.coa_file_key ?? null,
+    received_at: receivedAt,
+    invoice_url: body.invoice_url ?? null,
+    lab_invoice_url: body.lab_invoice_url ?? null,
     metadata: body.metadata ?? null,
   });
 

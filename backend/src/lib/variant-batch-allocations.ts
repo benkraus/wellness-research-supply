@@ -119,8 +119,40 @@ export const allocateVariantBatchesForOrder = async (orderId: string, container:
       timeout: 10,
     });
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('Skipping allocation; lock unavailable', error);
+    try {
+      const batchService = container.resolve(VARIANT_BATCH_MODULE) as VariantBatchModuleService;
+      const orderService: IOrderModuleService = container.resolve(Modules.ORDER);
+      const order = await orderService.retrieveOrder(orderId, {
+        relations: ['items'],
+      });
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      const fullyAllocated = await Promise.all(
+        items.map(async (item) => {
+          const quantity = Number((item as OrderLineItemDTO).quantity ?? 0);
+          if (!Number.isFinite(quantity) || quantity <= 0) {
+            return true;
+          }
+          const allocations = await batchService.listVariantBatchAllocations({
+            order_line_item_id: item.id,
+          });
+          const allocated = allocations.reduce(
+            (sum, allocation) => sum + Number(allocation.quantity ?? 0),
+            0
+          );
+          return allocated >= quantity;
+        })
+      );
+
+      if (fullyAllocated.every(Boolean)) {
+        return;
+      }
+    } catch (checkError) {
+      // eslint-disable-next-line no-console
+      console.warn('Unable to verify allocations after lock failure', checkError);
+    }
+
+    await runAllocation();
   }
 };
 
