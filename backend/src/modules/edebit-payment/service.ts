@@ -26,8 +26,13 @@ import {
   PaymentActions,
   PaymentSessionStatus,
 } from "@medusajs/framework/utils"
-import { randomUUID } from "crypto"
-import { createDecipheriv, createHash } from "crypto"
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  randomUUID,
+} from "crypto"
 
 type InjectedDependencies = {
   logger: Logger
@@ -98,12 +103,13 @@ class EDebitPaymentProviderService extends AbstractPaymentProvider<EDebitProvide
     data,
   }: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
     const sessionId = (data?.session_id as string) ?? randomUUID()
+    const securedData = this.securePaymentData(data)
 
     return {
       id: sessionId,
       status: PaymentSessionStatus.PENDING,
       data: {
-        ...data,
+        ...securedData,
         session_id: sessionId,
         amount,
         currency_code,
@@ -216,7 +222,7 @@ class EDebitPaymentProviderService extends AbstractPaymentProvider<EDebitProvide
   }: UpdatePaymentInput): Promise<UpdatePaymentOutput> {
     return {
       status: PaymentSessionStatus.PENDING,
-      data: data ?? {},
+      data: this.securePaymentData(data),
     }
   }
 
@@ -391,9 +397,66 @@ class EDebitPaymentProviderService extends AbstractPaymentProvider<EDebitProvide
     if (!data) return {}
 
     const sanitized = { ...data }
+    delete sanitized.edebit_account_name
     delete sanitized.edebit_account_number
+    delete sanitized.edebit_bank_name
+    delete sanitized.edebit_phone
     delete sanitized.edebit_routing_number
     delete sanitized.edebit_encrypted
+    return sanitized
+  }
+
+  private securePaymentData(data?: Record<string, unknown>) {
+    if (!data) return {}
+
+    const encrypted = this.getString(data, "edebit_encrypted")
+    if (encrypted) {
+      return this.stripSensitiveFields(data)
+    }
+
+    if (!this.hasRawSensitiveFields(data)) {
+      return data
+    }
+
+    const payload = {
+      account_name: this.requiredString(data, "edebit_account_name"),
+      routing_number: this.requiredString(data, "edebit_routing_number"),
+      account_number: this.requiredString(data, "edebit_account_number"),
+      bank_name: this.requiredString(data, "edebit_bank_name"),
+      phone: this.requiredString(data, "edebit_phone"),
+    }
+
+    const secured = {
+      ...data,
+      edebit_encrypted: this.encryptEdebitPayload(payload),
+      edebit_account_last4:
+        this.getString(data, "edebit_account_last4") ??
+        this.last4(payload.account_number),
+      edebit_routing_last4:
+        this.getString(data, "edebit_routing_last4") ??
+        this.last4(payload.routing_number),
+    }
+
+    return this.stripSensitiveFields(secured)
+  }
+
+  private hasRawSensitiveFields(data: Record<string, unknown>) {
+    return [
+      "edebit_account_name",
+      "edebit_account_number",
+      "edebit_routing_number",
+      "edebit_bank_name",
+      "edebit_phone",
+    ].some((key) => Boolean(this.getString(data, key)))
+  }
+
+  private stripSensitiveFields(data: Record<string, unknown>) {
+    const sanitized = { ...data }
+    delete sanitized.edebit_account_name
+    delete sanitized.edebit_account_number
+    delete sanitized.edebit_bank_name
+    delete sanitized.edebit_phone
+    delete sanitized.edebit_routing_number
     return sanitized
   }
 
@@ -583,6 +646,35 @@ class EDebitPaymentProviderService extends AbstractPaymentProvider<EDebitProvide
     }
 
     return payload
+  }
+
+  private encryptEdebitPayload(payload: {
+    account_name: string
+    routing_number: string
+    account_number: string
+    bank_name: string
+    phone: string
+  }) {
+    const key = this.options_.encryptionKey
+    if (!key) {
+      throw new Error("Missing eDebit encryption key")
+    }
+
+    const iv = randomBytes(12)
+    const cipher = createCipheriv("aes-256-gcm", this.normalizeKey(key), iv)
+    const serialized = Buffer.from(JSON.stringify(payload), "utf8")
+    const encrypted = Buffer.concat([
+      cipher.update(serialized),
+      cipher.final(),
+    ])
+    const tag = cipher.getAuthTag()
+
+    return [
+      "v1",
+      iv.toString("base64"),
+      tag.toString("base64"),
+      encrypted.toString("base64"),
+    ].join(".")
   }
 
   private normalizeKey(key: string) {
