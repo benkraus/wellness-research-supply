@@ -1,6 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { Modules } from '@medusajs/utils';
-import type { IOrderModuleService, OrderDTO } from '@medusajs/types';
+import type { IOrderModuleService, OrderDTO, OrderLineItemDTO } from '@medusajs/types';
 import { VARIANT_BATCH_MODULE } from '../../../../modules/variant-batch';
 import type VariantBatchModuleService from '../../../../modules/variant-batch/service';
 
@@ -26,17 +26,19 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const orderModuleService = req.scope.resolve<IOrderModuleService>(Modules.ORDER);
   const lineItems = orderLineItemIds.length
-    ? await orderModuleService.listOrderLineItems(
+    ? (await orderModuleService.listOrderLineItems(
         { id: orderLineItemIds },
         { relations: ['order'] },
-      )
+      )) as Array<OrderLineItemDTO & { order?: OrderDTO }>
     : [];
 
   const lineItemMap = new Map(lineItems.map((item) => [item.id, item]));
 
   const allocationsWithDetails = allocations.map((allocation) => {
-    const lineItem = lineItemMap.get(allocation.order_line_item_id);
-    const order = (lineItem?.order as OrderDTO | undefined) ?? undefined;
+    const lineItem = lineItemMap.get(allocation.order_line_item_id) as
+      | (OrderLineItemDTO & { order?: OrderDTO })
+      | undefined;
+    const order = lineItem?.order;
 
     return {
       ...allocation,
