@@ -40,10 +40,7 @@ export const syncInventoryLevelsForVariants = async (
   const knownVariantIds = new Set<string>(uniqueVariantIds);
   const knownInventoryItemIds = new Set<string>();
   let pendingVariantIds = new Set<string>(uniqueVariantIds);
-  let attempts = 0;
-
-  while (pendingVariantIds.size > 0 && attempts < 8) {
-    attempts += 1;
+  while (pendingVariantIds.size > 0) {
     const batchIds = Array.from(pendingVariantIds);
     pendingVariantIds = new Set<string>();
 
