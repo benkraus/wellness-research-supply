@@ -1,9 +1,9 @@
+import { data } from 'react-router';
 import { addressPayload, addressToMedusaAddress } from '@libs/util/addresses';
 import { normalizePhoneNumber } from '@libs/util/phoneNumber';
-import { baseMedusaConfig } from '@libs/util/server/client.server';
 import { getAuthHeaders } from '@libs/util/server/auth.server';
+import { baseMedusaConfig } from '@libs/util/server/client.server';
 import { getCustomer } from '@libs/util/server/data/customer.server';
-import { data } from 'react-router';
 
 const buildAddressFromForm = (formData: FormData, prefix = 'address') => {
   const getValue = (key: string) => String(formData.get(`${prefix}.${key}`) || '').trim();
@@ -52,6 +52,9 @@ export const action = async ({ request }: { request: Request }) => {
     if (intent === 'create') {
       const address = buildAddressFromForm(formData);
       const payload = addressPayload(addressToMedusaAddress(address));
+      if (setDefault) {
+        (payload as Record<string, unknown>).is_default_shipping = true;
+      }
 
       const response = await fetch(new URL('/store/customers/me/addresses', baseMedusaConfig.baseUrl), {
         method: 'POST',
@@ -61,27 +64,6 @@ export const action = async ({ request }: { request: Request }) => {
 
       if (!response.ok) {
         return data({ error: 'Unable to save address.' }, { status: response.status });
-      }
-
-      if (setDefault) {
-        const body = await response.json().catch(() => null);
-        const createdAddress = body?.customer?.addresses?.[body.customer.addresses.length - 1];
-        if (!createdAddress?.id) {
-          return data({ error: 'Address saved, but could not set default.' }, { status: 400 });
-        }
-
-        const defaultResponse = await fetch(
-          new URL(`/store/customers/me/addresses/${createdAddress.id}`, baseMedusaConfig.baseUrl),
-          {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ is_default_shipping: true }),
-          },
-        );
-
-        if (!defaultResponse.ok) {
-          return data({ error: 'Address saved, but could not set default.' }, { status: defaultResponse.status });
-        }
       }
 
       return data({ success: true });
