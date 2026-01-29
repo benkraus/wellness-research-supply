@@ -1,12 +1,13 @@
+import { redirect, useLoaderData } from 'react-router';
+import type { LoaderFunctionArgs, MetaFunction } from 'react-router';
+import { redirect, useLoaderData } from 'react-router';
 import { ProductReviewSection } from '@app/components/reviews/ProductReviewSection';
 import ProductList from '@app/components/sections/ProductList';
 import { ProductTemplate } from '@app/templates/ProductTemplate';
 import { getMergedProductMeta } from '@libs/util/products';
-import { fetchProductReviewStats, fetchProductReviews } from '@libs/util/server/data/product-reviews.server';
+import { fetchProductReviews, fetchProductReviewStats } from '@libs/util/server/data/product-reviews.server';
 import { fetchProducts } from '@libs/util/server/products.server';
 import { withPaginationParams } from '@libs/util/withPaginationParams';
-import { type LoaderFunctionArgs, type MetaFunction, redirect } from 'react-router';
-import { useLoaderData } from 'react-router';
 
 export const loader = async (args: LoaderFunctionArgs) => {
   const { limit: reviewsLimit, offset: reviewsOffset } = withPaginationParams({
@@ -16,7 +17,7 @@ export const loader = async (args: LoaderFunctionArgs) => {
 
   const { products } = await fetchProducts(args.request, {
     handle: args.params.productHandle,
-    fields: '*categories',
+    fields: '*categories,*variants.calculated_price,+variants.inventory_quantity',
   });
 
   if (!products.length) throw redirect('/404');
