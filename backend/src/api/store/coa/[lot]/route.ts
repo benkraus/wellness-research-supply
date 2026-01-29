@@ -46,5 +46,20 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(500).json({ error: 'COA storage is not configured.' });
   }
 
-  return res.redirect(coaUrl);
+  try {
+    const response = await fetch(coaUrl);
+
+    if (!response.ok) {
+      return res.status(502).json({ error: 'Failed to fetch COA from storage.' });
+    }
+
+    const contentType = response.headers.get('content-type') || 'application/pdf';
+    res.setHeader('Content-Type', contentType);
+
+    const buffer = await response.arrayBuffer();
+    return res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Failed to retrieve COA.', error);
+    return res.status(500).json({ error: 'Failed to retrieve COA.' });
+  }
 };
