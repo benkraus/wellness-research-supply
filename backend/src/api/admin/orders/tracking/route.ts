@@ -1,6 +1,7 @@
+import { ContainerRegistrationKeys, Modules, remoteQueryObjectFromString } from '@medusajs/framework/utils';
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import type { IFulfillmentModuleService } from '@medusajs/framework/types';
-import { ContainerRegistrationKeys, Modules, remoteQueryObjectFromString } from '@medusajs/framework/utils';
+import type { FulfillmentDTO } from '@medusajs/types';
 
 import { getFulfillmentLatestTrackingUpdate, getFulfillmentTrackingPackages } from '../../../../lib/shipstation-tracking';
 
@@ -41,6 +42,11 @@ const normalizeIsoDate = (value?: string | Date | null) => {
   return value;
 };
 
+const getFulfillmentOrderId = (fulfillment: FulfillmentDTO) => {
+  const orderId = (fulfillment as { order_id?: unknown }).order_id;
+  return typeof orderId === 'string' && orderId.length ? orderId : null;
+};
+
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const limit = Math.min(Number(req.query.limit ?? 25) || 25, 100);
   const take = Math.min(limit * 6, 300);
@@ -51,7 +57,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     { order: { updated_at: 'DESC' }, take },
   );
 
-  // biome-ignore lint/complexity/useOptionalChain: fulfillment entries are filtered before use
   const fulfillmentRows: FulfillmentRow[] = fulfillments
     .filter((fulfillment): fulfillment is NonNullable<typeof fulfillment> => Boolean(fulfillment))
     .map((fulfillment) => {
@@ -71,7 +76,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 
       return {
         id: fulfillment.id,
-        order_id: fulfillment.order_id ?? null,
+        order_id: getFulfillmentOrderId(fulfillment),
         updated_at: normalizeIsoDate(fulfillment?.updated_at),
         shipped_at: normalizeIsoDate(fulfillment?.shipped_at),
         metadata: fulfillment.metadata ?? null,
@@ -89,7 +94,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     if (packages.length === 0) {
       return;
     }
-    const orderId = fulfillment.order_id ?? undefined;
+    const orderId = getFulfillmentOrderId(fulfillment) ?? undefined;
     if (!orderId) {
       return;
     }
