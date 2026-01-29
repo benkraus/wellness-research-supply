@@ -61,6 +61,24 @@
           "nullable": true,
           "mappedType": "text"
         },
+        "supplier_cost_per_vial": {
+          "name": "supplier_cost_per_vial",
+          "type": "numeric",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "number"
+        },
+        "testing_cost": {
+          "name": "testing_cost",
+          "type": "numeric",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "number"
+        },
         "coa_file_key": {
           "name": "coa_file_key",
           "type": "text",

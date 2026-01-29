@@ -32,12 +32,16 @@ const normalizeFields = (req: MedusaRequest) => {
   return includesInventory;
 };
 
-const attachBatchTotalsForProducts = async (req: MedusaRequest, products: any[]) => {
+const attachBatchTotalsForProducts = async (
+  req: MedusaRequest,
+  products: any[],
+  options: { includeInventory?: boolean; includeAtPrice?: boolean } = {},
+) => {
   const variants = products.map((product) => product.variants ?? []).flat(1);
   if (!variants.length) {
     return;
   }
-  await attachBatchInventoryQuantities(req.scope, variants);
+  await attachBatchInventoryQuantities(req.scope, variants, options);
 };
 
 const attachPricesForProducts = (products: any[]) => {
@@ -82,9 +86,10 @@ async function getProductsWithIndexEngine(req: MedusaRequest, res: MedusaRespons
     },
   );
 
-  if (includesInventory) {
-    await attachBatchTotalsForProducts(req, products);
-  }
+  await attachBatchTotalsForProducts(req, products, {
+    includeInventory: includesInventory,
+    includeAtPrice: false,
+  });
   attachPricesForProducts(products);
   await wrapProductsWithTaxPrices(req, products);
 
@@ -123,9 +128,10 @@ async function getProducts(req: MedusaRequest, res: MedusaResponse) {
     },
   );
 
-  if (includesInventory) {
-    await attachBatchTotalsForProducts(req, products);
-  }
+  await attachBatchTotalsForProducts(req, products, {
+    includeInventory: includesInventory,
+    includeAtPrice: false,
+  });
   attachPricesForProducts(products);
   await wrapProductsWithTaxPrices(req, products);
 

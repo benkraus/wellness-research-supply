@@ -11,6 +11,8 @@ interface VariantBatchDetail {
   received_at?: string | null;
   invoice_url?: string | null;
   lab_invoice_url?: string | null;
+  supplier_cost_per_vial?: number | null;
+  testing_cost?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -119,9 +121,22 @@ const VariantBatchDetailsPage = () => {
     received_at: '',
     invoice_url: '',
     lab_invoice_url: '',
+    supplier_cost_per_vial: '',
+    testing_cost: '',
   });
 
   const hasBatch = Boolean(batch && batch.id);
+  const atPricePerVial = useMemo(() => {
+    const quantity = Number(formValues.quantity) || 0;
+    const supplier = Number(formValues.supplier_cost_per_vial) || 0;
+    const testing = Number(formValues.testing_cost) || 0;
+
+    if (quantity <= 0) {
+      return supplier || 0;
+    }
+
+    return supplier + testing / quantity;
+  }, [formValues.quantity, formValues.supplier_cost_per_vial, formValues.testing_cost]);
 
   const load = async (targetId?: string) => {
     const resolvedId = targetId ?? batchId;
@@ -148,6 +163,12 @@ const VariantBatchDetailsPage = () => {
         received_at: toDateInput(nextBatch.received_at),
         invoice_url: nextBatch.invoice_url ?? '',
         lab_invoice_url: nextBatch.lab_invoice_url ?? '',
+        supplier_cost_per_vial:
+          typeof nextBatch.supplier_cost_per_vial === 'number'
+            ? String(nextBatch.supplier_cost_per_vial)
+            : '',
+        testing_cost:
+          typeof nextBatch.testing_cost === 'number' ? String(nextBatch.testing_cost) : '',
       });
 
       try {
@@ -220,6 +241,12 @@ const VariantBatchDetailsPage = () => {
           received_at: formValues.received_at || null,
           invoice_url: formValues.invoice_url.trim() || null,
           lab_invoice_url: formValues.lab_invoice_url.trim() || null,
+          supplier_cost_per_vial:
+            formValues.supplier_cost_per_vial.trim() === ''
+              ? null
+              : Number(formValues.supplier_cost_per_vial),
+          testing_cost:
+            formValues.testing_cost.trim() === '' ? null : Number(formValues.testing_cost),
         }),
       });
 
@@ -437,6 +464,44 @@ const VariantBatchDetailsPage = () => {
                     }
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Supplier cost per vial</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={formValues.supplier_cost_per_vial}
+                    onChange={(event) =>
+                      setFormValues((prev) => ({
+                        ...prev,
+                        supplier_cost_per_vial: event.target.value,
+                      }))
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Testing cost (batch total)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={formValues.testing_cost}
+                    onChange={(event) =>
+                      setFormValues((prev) => ({
+                        ...prev,
+                        testing_cost: event.target.value,
+                      }))
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                <Text size="small" className="text-ui-fg-subtle">
+                  Estimated at-price per vial
+                </Text>
+                <Text className="font-medium">${atPricePerVial.toFixed(2)}</Text>
               </div>
             </div>
           </div>

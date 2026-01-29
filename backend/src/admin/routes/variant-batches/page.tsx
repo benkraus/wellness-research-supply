@@ -22,6 +22,8 @@ interface VariantBatch {
   received_at?: string | null;
   invoice_url?: string | null;
   lab_invoice_url?: string | null;
+  supplier_cost_per_vial?: number | null;
+  testing_cost?: number | null;
   coa_file_key?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -78,6 +80,8 @@ const emptyForm = {
   received_at: '',
   invoice_url: '',
   lab_invoice_url: '',
+  supplier_cost_per_vial: '',
+  testing_cost: '',
 };
 
 const emptyFilters = {
@@ -102,6 +106,13 @@ const emptyAllocationFilters = {
 const toNumber = (value: string) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toNullableNumber = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const generateLotNumber = () => {
@@ -392,6 +403,18 @@ const VariantBatchesSettingsPage = () => {
     [batches],
   );
 
+  const previewAtPrice = useMemo(() => {
+    const quantity = toNumber(formValues.quantity);
+    const supplier = toNullableNumber(formValues.supplier_cost_per_vial) ?? 0;
+    const testing = toNullableNumber(formValues.testing_cost) ?? 0;
+
+    if (quantity <= 0) {
+      return supplier || 0;
+    }
+
+    return supplier + testing / quantity;
+  }, [formValues.quantity, formValues.supplier_cost_per_vial, formValues.testing_cost]);
+
   const batchLabelById = useMemo(() => {
     const map = new Map<string, string>();
     batches.forEach((batch) => {
@@ -449,6 +472,8 @@ const VariantBatchesSettingsPage = () => {
           received_at: formValues.received_at || null,
           invoice_url: formValues.invoice_url.trim() || null,
           lab_invoice_url: formValues.lab_invoice_url.trim() || null,
+          supplier_cost_per_vial: toNullableNumber(formValues.supplier_cost_per_vial),
+          testing_cost: toNullableNumber(formValues.testing_cost),
         }),
       });
 
@@ -1070,6 +1095,36 @@ const VariantBatchesSettingsPage = () => {
                     value={formValues.quantity}
                     onChange={(event) => setFormValues({ ...formValues, quantity: event.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Supplier cost per vial</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={formValues.supplier_cost_per_vial}
+                    onChange={(event) =>
+                      setFormValues({ ...formValues, supplier_cost_per_vial: event.target.value })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Testing cost (batch total)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={formValues.testing_cost}
+                    onChange={(event) => setFormValues({ ...formValues, testing_cost: event.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                  <Text size="small" className="text-ui-fg-subtle">
+                    Estimated at-price per vial
+                  </Text>
+                  <Text className="font-medium">${previewAtPrice.toFixed(2)}</Text>
                 </div>
                 <div className="space-y-2">
                   <Label>Received date</Label>

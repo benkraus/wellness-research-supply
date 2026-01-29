@@ -41,8 +41,11 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, `Product with id: ${filters.id} was not found`);
   }
 
-  if (includesInventory && product.variants?.length) {
-    await attachBatchInventoryQuantities(req.scope, product.variants);
+  if (product.variants?.length) {
+    await attachBatchInventoryQuantities(req.scope, product.variants, {
+      includeInventory: includesInventory,
+      includeAtPrice: false,
+    });
   }
   if (product.variants?.length) {
     attachVariantPrices(product.variants);

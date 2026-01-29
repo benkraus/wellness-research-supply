@@ -43,6 +43,12 @@ export const AUTH_CORS = process.env.AUTH_CORS;
 export const STORE_CORS = process.env.STORE_CORS;
 
 /**
+ * Customer group ID for at-price pricing
+ */
+const atPriceGroupId = process.env.AT_PRICE_CUSTOMER_GROUP_ID ?? 'cusgroup_01KG1KFTEVTATBY7MZC2AMG119';
+export const AT_PRICE_CUSTOMER_GROUP_ID = atPriceGroupId.trim() ? atPriceGroupId : undefined;
+
+/**
  * JWT Secret used for signing JWT tokens
  */
 export const JWT_SECRET = assertValue(

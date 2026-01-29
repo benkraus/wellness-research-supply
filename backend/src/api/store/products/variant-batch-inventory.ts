@@ -9,7 +9,10 @@ type VariantWithInventory = {
 export const attachBatchInventoryQuantities = async (
   scope: { resolve: <T = unknown>(key: string) => T },
   variants: VariantWithInventory[],
+  options: { includeInventory?: boolean; includeAtPrice?: boolean } = {},
 ) => {
+  const includeInventory = options.includeInventory ?? true;
+  const includeAtPrice = options.includeAtPrice ?? true;
   const variantIds = variants
     .map((variant) => variant.id)
     .filter((id): id is string => typeof id === 'string' && id.length > 0);
@@ -42,6 +45,8 @@ export const attachBatchInventoryQuantities = async (
   });
 
   const totals = new Map<string, number>();
+  const costTotals = new Map<string, { cost: number; quantity: number }>();
+
   batches.forEach((batch) => {
     const variantId = batch.variant_id;
     if (!variantId) {
@@ -51,13 +56,46 @@ export const attachBatchInventoryQuantities = async (
     const safeQuantity = Number.isFinite(quantity) ? quantity : 0;
     const allocated = allocatedByBatch.get(batch.id) ?? 0;
     const available = Math.max(safeQuantity - allocated, 0);
-    totals.set(variantId, (totals.get(variantId) ?? 0) + available);
+
+    if (includeInventory) {
+      totals.set(variantId, (totals.get(variantId) ?? 0) + available);
+    }
+
+    if (includeAtPrice && safeQuantity > 0) {
+      const supplierCost = Number((batch as { supplier_cost_per_vial?: number | null }).supplier_cost_per_vial ?? 0);
+      const testingCost = Number((batch as { testing_cost?: number | null }).testing_cost ?? 0);
+      const perVialTesting = safeQuantity > 0 ? testingCost / safeQuantity : 0;
+      const perVialCost = supplierCost + perVialTesting;
+
+      if (Number.isFinite(perVialCost) && perVialCost > 0) {
+        const current = costTotals.get(variantId) ?? { cost: 0, quantity: 0 };
+        costTotals.set(variantId, {
+          cost: current.cost + perVialCost * safeQuantity,
+          quantity: current.quantity + safeQuantity,
+        });
+      }
+    }
   });
 
   variants.forEach((variant) => {
-    if (!variant.id || variant.manage_inventory === false) {
+    if (!variant.id) {
       return;
     }
-    (variant as { inventory_quantity?: number }).inventory_quantity = totals.get(variant.id) ?? 0;
+
+    if (includeInventory && variant.manage_inventory !== false) {
+      (variant as { inventory_quantity?: number }).inventory_quantity = totals.get(variant.id) ?? 0;
+    }
+
+    if (includeAtPrice) {
+      const costEntry = costTotals.get(variant.id);
+      if (costEntry && costEntry.quantity > 0) {
+        const perVialCost = costEntry.cost / costEntry.quantity;
+        const metadata = {
+          ...(variant as { metadata?: Record<string, unknown> }).metadata,
+          at_price_per_vial: perVialCost,
+        };
+        (variant as { metadata?: Record<string, unknown> }).metadata = metadata;
+      }
+    }
   });
 };

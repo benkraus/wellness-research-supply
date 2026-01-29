@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { VARIANT_BATCH_MODULE } from '../../../modules/variant-batch';
 import type VariantBatchModuleService from '../../../modules/variant-batch/service';
+import { syncAtPricePriceListForVariants } from '../../../lib/at-price-pricing';
 import { syncInventoryLevelsForVariants } from '../../../lib/variant-batch-inventory';
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -63,6 +64,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     received_at?: string | null;
     invoice_url?: string | null;
     lab_invoice_url?: string | null;
+    supplier_cost_per_vial?: number | string | null;
+    testing_cost?: number | string | null;
     metadata?: Record<string, unknown> | null;
   };
 
@@ -71,6 +74,14 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 
   const quantity = Number(body.quantity ?? 0);
+  const supplierCost =
+    body.supplier_cost_per_vial === null || body.supplier_cost_per_vial === undefined
+      ? null
+      : Number(body.supplier_cost_per_vial);
+  const testingCost =
+    body.testing_cost === null || body.testing_cost === undefined
+      ? null
+      : Number(body.testing_cost);
 
   const parsedReceivedAt = body.received_at ? new Date(body.received_at) : null;
   const receivedAt = parsedReceivedAt && !Number.isNaN(parsedReceivedAt.getTime())
@@ -85,6 +96,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     received_at: receivedAt,
     invoice_url: body.invoice_url ?? null,
     lab_invoice_url: body.lab_invoice_url ?? null,
+    supplier_cost_per_vial: Number.isFinite(supplierCost) ? supplierCost : null,
+    testing_cost: Number.isFinite(testingCost) ? testingCost : null,
     metadata: body.metadata ?? null,
   });
 
@@ -93,6 +106,13 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Failed to sync inventory levels after batch create', error);
+  }
+
+  try {
+    await syncAtPricePriceListForVariants([batch.variant_id], req.scope);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to sync at-price list after batch create', error);
   }
 
   return res.status(201).json({ batch });

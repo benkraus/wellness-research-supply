@@ -7,6 +7,8 @@ export const VariantBatch = model.define('variant_batch', {
   received_at: model.dateTime().nullable(),
   invoice_url: model.text().nullable(),
   lab_invoice_url: model.text().nullable(),
+  supplier_cost_per_vial: model.number().nullable(),
+  testing_cost: model.number().nullable(),
   coa_file_key: model.text().nullable(),
   quantity: model.number().default(0),
   metadata: model.json().nullable(),
