@@ -16,7 +16,8 @@ export const loader = async (args: LoaderFunctionArgs) => {
 
   const { products } = await fetchProducts(args.request, {
     handle: args.params.productHandle,
-    fields: '*categories,*variants.calculated_price,+variants.inventory_quantity,+variants.metadata',
+    fields:
+      '*categories,*variants,*variants.calculated_price,+variants.inventory_quantity,+variants.metadata,+variants.batch_inventory',
   });
 
   if (!products.length) throw redirect('/404');
