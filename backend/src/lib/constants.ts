@@ -98,6 +98,11 @@ export const ACCOUNT_FROM_EMAIL =
 export const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY;
 
 /**
+ * (optional) ShipStation webhook secret
+ */
+export const SHIPSTATION_WEBHOOK_SECRET = process.env.SHIPSTATION_WEBHOOK_SECRET;
+
+/**
  * (optional) Klaviyo configuration
  */
 export const KLAVIYO_API_KEY = process.env.KLAVIYO_API_KEY;

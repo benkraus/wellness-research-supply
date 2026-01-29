@@ -7,5 +7,10 @@ export const config: MiddlewaresConfig = {
       methods: ['GET'],
       middlewares: [authenticate('customer', ['bearer', 'session'])],
     },
+    {
+      matcher: '/store/orders/tracking',
+      methods: ['GET'],
+      middlewares: [authenticate('customer', ['bearer', 'session'])],
+    },
   ],
 };
