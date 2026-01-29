@@ -42,7 +42,7 @@ const normalizeIsoDate = (value?: string | Date | null) => {
   return value;
 };
 
-const getFulfillmentOrderId = (fulfillment: FulfillmentDTO) => {
+const getFulfillmentOrderId = (fulfillment: FulfillmentDTO | FulfillmentRow) => {
   const orderId = (fulfillment as { order_id?: unknown }).order_id;
   return typeof orderId === 'string' && orderId.length ? orderId : null;
 };
