@@ -1,6 +1,7 @@
+import { ComingSoonBadge } from '@app/components/badges/ComingSoonBadge';
 import { SoldOutBadge } from '@app/components/badges/SoldOutBadge';
 import { useProductInventory } from '@app/hooks/useProductInventory';
-import { StoreProduct } from '@medusajs/types';
+import type { StoreProduct } from '@medusajs/types';
 import { FC, HTMLAttributes } from 'react';
 
 interface ProductBadgesProps extends HTMLAttributes<HTMLElement> {
@@ -10,7 +11,13 @@ interface ProductBadgesProps extends HTMLAttributes<HTMLElement> {
 
 export const ProductBadges: FC<ProductBadgesProps> = ({ product, className }) => {
   const productInventory = useProductInventory(product);
-  const isSoldOut = productInventory.averageInventory === 0;
+  const isComingSoon = productInventory.isComingSoon;
+  const isSoldOut = productInventory.isSoldOut && !isComingSoon;
 
-  return <div className={className}>{isSoldOut && <SoldOutBadge />}</div>;
+  return (
+    <div className={className}>
+      {isComingSoon && <ComingSoonBadge />}
+      {isSoldOut && <SoldOutBadge />}
+    </div>
+  );
 };

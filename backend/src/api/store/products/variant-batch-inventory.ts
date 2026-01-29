@@ -6,6 +6,18 @@ type VariantWithInventory = {
   manage_inventory?: boolean | null;
 };
 
+type VariantBatchSummary = {
+  id: string;
+  lot_number?: string | null;
+  available_quantity: number;
+  has_coa: boolean;
+  created_at?: string | Date | null;
+};
+
+type VariantWithBatchInventory = VariantWithInventory & {
+  batch_inventory?: VariantBatchSummary[];
+};
+
 export const attachBatchInventoryQuantities = async (
   scope: { resolve: <T = unknown>(key: string) => T },
   variants: VariantWithInventory[],
@@ -46,6 +58,7 @@ export const attachBatchInventoryQuantities = async (
 
   const totals = new Map<string, number>();
   const costTotals = new Map<string, { cost: number; quantity: number }>();
+  const batchInventoryByVariant = new Map<string, VariantBatchSummary[]>();
 
   batches.forEach((batch) => {
     const variantId = batch.variant_id;
@@ -56,6 +69,18 @@ export const attachBatchInventoryQuantities = async (
     const safeQuantity = Number.isFinite(quantity) ? quantity : 0;
     const allocated = allocatedByBatch.get(batch.id) ?? 0;
     const available = Math.max(safeQuantity - allocated, 0);
+
+    const summary: VariantBatchSummary = {
+      id: batch.id,
+      lot_number: batch.lot_number ?? null,
+      available_quantity: available,
+      has_coa: Boolean((batch as { coa_file_key?: string | null }).coa_file_key),
+      created_at: (batch as { created_at?: string | Date | null }).created_at ?? null,
+    };
+
+    const list = batchInventoryByVariant.get(variantId) ?? [];
+    list.push(summary);
+    batchInventoryByVariant.set(variantId, list);
 
     if (includeInventory) {
       totals.set(variantId, (totals.get(variantId) ?? 0) + available);
@@ -81,6 +106,8 @@ export const attachBatchInventoryQuantities = async (
     if (!variant.id) {
       return;
     }
+
+    (variant as VariantWithBatchInventory).batch_inventory = batchInventoryByVariant.get(variant.id) ?? [];
 
     if (includeInventory && variant.manage_inventory !== false) {
       (variant as { inventory_quantity?: number }).inventory_quantity = totals.get(variant.id) ?? 0;

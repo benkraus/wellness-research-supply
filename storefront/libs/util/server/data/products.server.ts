@@ -1,5 +1,5 @@
 import { sdk } from '@libs/util/server/client.server';
-import { HttpTypes } from '@medusajs/types';
+import type { HttpTypes } from '@medusajs/types';
 import { retrieveRegion } from './regions.server';
 
 export const getProductsById = ({
@@ -57,7 +57,7 @@ export const getProductsList = async ({
       limit,
       offset,
       region_id: region.id,
-      fields: '*variants.calculated_price',
+      fields: '*variants.calculated_price,+variants.inventory_quantity',
       ...queryParams,
     })
     .then(({ products, count }) => {

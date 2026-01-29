@@ -14,6 +14,7 @@ import { ProductPriceRange } from '@app/components/product/ProductPriceRange';
 import { ProductReviewStars } from '@app/components/reviews/ProductReviewStars';
 import { Share } from '@app/components/share';
 import { useCart } from '@app/hooks/useCart';
+import { useCustomer } from '@app/hooks/useCustomer';
 import { useProductInventory } from '@app/hooks/useProductInventory';
 import { useRegion } from '@app/hooks/useRegion';
 import { getPosthog } from '@app/lib/posthog';
@@ -73,15 +74,6 @@ export interface ProductTemplateProps {
   reviewStats?: StoreProductReviewStats;
 }
 
-/**
- * Determines if a variant is sold out based on inventory
- * @param variant - The variant to check
- * @returns True if the variant is sold out, false otherwise
- */
-const variantIsSoldOut: (variant: StoreProductVariant | undefined) => boolean = (variant) => {
-  return !!(variant?.manage_inventory && variant?.inventory_quantity! < 1);
-};
-
 export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductTemplateProps) => {
   const formRef = useRef<HTMLFormElement>(null);
   const lastProductViewRef = useRef<string | null>(null);
@@ -89,7 +81,9 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
   const lastAddToCartCaptureRef = useRef<number | null>(null);
   const lastAddToCartPayloadRef = useRef<Record<string, unknown> | null>(null);
   const addToCartFetcher = useFetcher<any>({ key: FetcherKeys.cart.createLineItem });
+  const notifyFetcher = useFetcher<{ success?: boolean; error?: string }>({ key: 'notify' });
   const { toggleCartDrawer } = useCart();
+  const { customer } = useCustomer();
   const { region } = useRegion();
   const hasErrors = Object.keys(addToCartFetcher.data?.errors || {}).length > 0;
 
@@ -201,7 +195,13 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
     [product, controlledOptions, currencyCode, variantMatrix, selectedOptions],
   );
 
-  const productSoldOut = useProductInventory(product).averageInventory === 0;
+  const productInventory = useProductInventory(product);
+  const selectedAvailability = productInventory.getVariantAvailability(selectedVariant);
+  const isPurchasable = selectedAvailability.isPurchasable;
+  const isComingSoon = selectedAvailability.isComingSoon;
+  const notifyBatchId = selectedAvailability.notifyBatchId;
+  const pendingBatchId = selectedAvailability.pendingBatchId;
+  const hasContactInfo = Boolean(customer?.email || customer?.phone);
   const pricingTiers = useMemo(() => {
     if (!selectedVariant) return [];
 
@@ -354,7 +354,7 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
     setControlledOptions(defaultValues.options);
   }, [defaultValues.options]);
 
-  const soldOut = variantIsSoldOut(selectedVariant) || productSoldOut;
+  const soldOut = !isPurchasable;
 
   // Use useCallback for the form submission handler
   const handleAddToCart = useCallback(() => {
@@ -517,24 +517,83 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                             </section>
                           )}
 
-                          <div className="my-2 flex flex-col gap-2">
-                            <div className="flex items-center gap-4 py-2">
-                              {!soldOut && <QuantitySelector variant={selectedVariant} />}
-                              <div className="flex-1">
-                                {!soldOut ? (
-                                  <SubmitButton className="!h-12 w-full whitespace-nowrap !text-base !font-bold bg-primary-500 hover:bg-primary-400 text-primary-900 shadow-[0_10px_30px_-20px_rgba(45,212,191,0.7)]">
-                                    {isAddingToCart ? 'Adding...' : 'Add to cart'}
-                                  </SubmitButton>
-                                ) : (
-                                  <SubmitButton
-                                    disabled
-                                    className="pointer-events-none !h-12 w-full !text-base !font-bold !opacity-100 bg-highlight-100/35 border border-primary-300/30 text-primary-200/80 shadow-none"
-                                  >
-                                    Sold out
-                                  </SubmitButton>
-                                )}
+                            <div className="my-2 flex flex-col gap-2">
+                              <div className="flex items-center gap-4 py-2">
+                                {!soldOut && <QuantitySelector variant={selectedVariant} />}
+                                <div className="flex-1">
+                                  {!soldOut ? (
+                                    <SubmitButton className="!h-12 w-full whitespace-nowrap !text-base !font-bold bg-primary-500 hover:bg-primary-400 text-primary-900 shadow-[0_10px_30px_-20px_rgba(45,212,191,0.7)]">
+                                      {isAddingToCart ? 'Adding...' : 'Add to cart'}
+                                    </SubmitButton>
+                                  ) : (
+                                    <SubmitButton
+                                      disabled
+                                      className="pointer-events-none !h-12 w-full !text-base !font-bold !opacity-100 bg-highlight-100/35 border border-primary-300/30 text-primary-200/80 shadow-none"
+                                    >
+                                      {isComingSoon ? 'Coming soon' : 'Sold out'}
+                                    </SubmitButton>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+
+                              {isComingSoon && (
+                                <div className="rounded-2xl border border-amber-200/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                                  Coming soon, pending lab results for this batch.
+                                </div>
+                              )}
+
+                              {!isPurchasable && (
+                                <div className="rounded-2xl border border-primary-200/20 bg-highlight-100/20 px-4 py-3">
+                                  <p className="text-xs uppercase tracking-[0.3em] text-primary-300">Notify me</p>
+                                  <div className="mt-3">
+                                    {!customer?.id ? (
+                                      <Button
+                                        as={(buttonProps) => (
+                                          <Link to="/account" {...buttonProps} />
+                                        )}
+                                        className="!h-11 w-full !text-sm !font-bold"
+                                      >
+                                        Sign in to get notified
+                                      </Button>
+                                    ) : !hasContactInfo ? (
+                                      <p className="text-sm text-primary-200">
+                                        Add an email or phone number in your{' '}
+                                        <Link
+                                          to="/account"
+                                          className="font-semibold text-primary-50 underline underline-offset-4"
+                                        >
+                                          account settings
+                                        </Link>{' '}
+                                        to get notified.
+                                      </p>
+                                    ) : notifyBatchId ? (
+                                      <notifyFetcher.Form method="post" action="/api/notify">
+                                        <input type="hidden" name="variant_batch_id" value={notifyBatchId} />
+                                        <Button
+                                          type="submit"
+                                          className="!h-11 w-full !text-sm !font-bold"
+                                          disabled={notifyFetcher.state !== 'idle'}
+                                        >
+                                          {notifyFetcher.state !== 'idle' ? 'Saving…' : 'Notify me'}
+                                        </Button>
+                                      </notifyFetcher.Form>
+                                    ) : (
+                                      <p className="text-sm text-primary-200">Notify is unavailable for this batch.</p>
+                                    )}
+                                  </div>
+                                  {notifyFetcher.data?.error && (
+                                    <p className="mt-3 text-sm text-red-300">{notifyFetcher.data.error}</p>
+                                  )}
+                                  {notifyFetcher.data?.success && (
+                                    <p className="mt-3 text-sm text-emerald-300">
+                                      You’re on the list. We’ll notify you when it’s available.
+                                    </p>
+                                  )}
+                                  {pendingBatchId && !isComingSoon && (
+                                    <p className="mt-2 text-xs text-primary-300">Batch {pendingBatchId}</p>
+                                  )}
+                                </div>
+                              )}
 
                             {!!product.description && (
                               <div className="mt-4">
