@@ -53,3 +53,5 @@ export const sdk = new MedusaPluginsSDK({
 });
 
 export const sdkCache = buildNewLRUCache({ max: 1000 });
+
+export const getMedusaBaseUrl = () => baseMedusaConfig.baseUrl;
