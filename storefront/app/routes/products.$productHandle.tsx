@@ -18,7 +18,7 @@ export const loader = async (args: LoaderFunctionArgs) => {
   const { products } = await fetchProducts(args.request, {
     handle: args.params.productHandle,
     fields:
-      '*categories,*variants,*variants.calculated_price,+variants.inventory_quantity,+variants.metadata,+variants.batch_inventory',
+      '*categories,*variants,*variants.calculated_price,+variants.inventory_quantity',
   });
 
   if (!products.length) throw redirect('/404');
@@ -27,12 +27,9 @@ export const loader = async (args: LoaderFunctionArgs) => {
 
   const variants = product.variants ?? [];
   const variantIds = variants.map((variant) => variant?.id).filter(Boolean) as string[];
-  const hasBatchInventory = variants.some((variant) => {
-    const batchInventory = (variant as { batch_inventory?: unknown[] }).batch_inventory;
-    const metadataInventory = (variant as { metadata?: { batch_inventory?: unknown[] } | null }).metadata
-      ?.batch_inventory;
-    return (batchInventory?.length ?? 0) > 0 || (metadataInventory?.length ?? 0) > 0;
-  });
+  const hasBatchInventory = variants.some(
+    (variant) => ((variant as { batch_inventory?: unknown[] }).batch_inventory?.length ?? 0) > 0,
+  );
 
   if (!hasBatchInventory && variantIds.length) {
     const publishableKey = await getPublishableKey();
@@ -61,11 +58,6 @@ export const loader = async (args: LoaderFunctionArgs) => {
         if (!batches.length) return;
 
         (variant as { batch_inventory?: unknown[] }).batch_inventory = batches;
-        const metadata = (variant as { metadata?: Record<string, unknown> | null }).metadata ?? {};
-        (variant as { metadata?: Record<string, unknown> | null }).metadata = {
-          ...metadata,
-          batch_inventory: batches,
-        };
       });
     }
   }

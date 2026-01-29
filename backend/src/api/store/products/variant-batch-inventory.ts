@@ -128,13 +128,6 @@ export const attachBatchInventoryQuantities = async (
       }
     }
 
-    if (batchInventory.length) {
-      nextMetadata = {
-        ...nextMetadata,
-        batch_inventory: batchInventory,
-      };
-    }
-
     if (nextMetadata !== baseMetadata) {
       (variant as { metadata?: Record<string, unknown> }).metadata = nextMetadata;
     }
