@@ -63,3 +63,38 @@ export const listOrderVariantBatches = withAuthHeaders(async (request, authHeade
     }>;
   };
 });
+
+export const listOrdersTracking = withAuthHeaders(async (request, authHeaders, orderIds: string[]) => {
+  const publishableKey = await getPublishableKey();
+  const url = new URL('/store/orders/tracking', baseMedusaConfig.baseUrl);
+
+  if (orderIds.length > 0) {
+    url.searchParams.set('order_ids', orderIds.join(','));
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      accept: 'application/json',
+      ...(publishableKey ? { 'x-publishable-api-key': publishableKey } : {}),
+      ...authHeaders,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to load order tracking.');
+  }
+
+  return (await response.json()) as {
+    orders: Array<{
+      order_id: string;
+      latest_update?: string | null;
+      packages: Array<{
+        tracking_number: string;
+        tracking_status?: string | null;
+        tracking_url?: string | null;
+        label_url?: string | null;
+        shipped_at?: string | null;
+      }>;
+    }>;
+  };
+});

@@ -83,6 +83,10 @@ export class ShipStationClient {
 		});
 	}
 
+	async getLabel(id: string): Promise<Label> {
+		return await this.sendRequest<Label>(`/labels/${id}`);
+	}
+
 	async voidLabel(id: string): Promise<VoidLabelResponse> {
 		return await this.sendRequest<VoidLabelResponse>(`/labels/${id}/void`, {
 			method: "PUT",
