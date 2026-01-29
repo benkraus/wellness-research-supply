@@ -2,12 +2,17 @@ import { Breadcrumbs } from '@app/components/common/breadcrumbs';
 import { Container } from '@app/components/common/container';
 import { ProductListWithPagination } from '@app/components/product/ProductListWithPagination';
 import HomeIcon from '@heroicons/react/24/solid/HomeIcon';
-import { fetchProducts } from '@libs/util/server/products.server';
-import { LoaderFunctionArgs } from 'react-router';
+import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
+import { fetchProducts } from '@libs/util/server/products.server';
+import { attachVariantBatchInventory } from '@libs/util/server/variant-batches.server';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { products, count, limit, offset } = await fetchProducts(request, {});
+  const { products, count, limit, offset } = await fetchProducts(request, {
+    fields: 'id,title,handle,thumbnail,variants.*,variants.prices.*',
+  });
+
+  await attachVariantBatchInventory(products);
 
   return { products, count, limit, offset };
 };

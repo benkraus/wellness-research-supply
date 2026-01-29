@@ -6,7 +6,7 @@ import { ProductTemplate } from '@app/templates/ProductTemplate';
 import { getMergedProductMeta } from '@libs/util/products';
 import { fetchProductReviews, fetchProductReviewStats } from '@libs/util/server/data/product-reviews.server';
 import { fetchProducts } from '@libs/util/server/products.server';
-import { getMedusaBaseUrl, getPublishableKey } from '@libs/util/server/client.server';
+import { attachVariantBatchInventory } from '@libs/util/server/variant-batches.server';
 import { withPaginationParams } from '@libs/util/withPaginationParams';
 
 export const loader = async (args: LoaderFunctionArgs) => {
@@ -25,42 +25,7 @@ export const loader = async (args: LoaderFunctionArgs) => {
 
   const product = products[0];
 
-  const variants = product.variants ?? [];
-  const variantIds = variants.map((variant) => variant?.id).filter(Boolean) as string[];
-  const hasBatchInventory = variants.some(
-    (variant) => ((variant as { batch_inventory?: unknown[] }).batch_inventory?.length ?? 0) > 0,
-  );
-
-  if (!hasBatchInventory && variantIds.length) {
-    const publishableKey = await getPublishableKey();
-    const baseUrl = getMedusaBaseUrl();
-    const url = new URL('/store/variant-batches', baseUrl);
-    url.searchParams.set('variant_ids', variantIds.join(','));
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        ...(publishableKey ? { 'x-publishable-api-key': publishableKey } : {}),
-        accept: 'application/json',
-      },
-    });
-
-    if (response.ok) {
-      const payload = (await response.json()) as {
-        variant_batches?: Array<{ variant_id: string; batches: unknown[] }>;
-      };
-      const entries = payload.variant_batches ?? [];
-      const batchesByVariant = new Map(entries.map((entry) => [entry.variant_id, entry.batches]));
-
-      variants.forEach((variant) => {
-        const variantId = variant?.id;
-        if (!variantId) return;
-        const batches = batchesByVariant.get(variantId) ?? [];
-        if (!batches.length) return;
-
-        (variant as { batch_inventory?: unknown[] }).batch_inventory = batches;
-      });
-    }
-  }
+  await attachVariantBatchInventory([product]);
 
   const [productReviews, productReviewStats] = await Promise.all([
     fetchProductReviews({

@@ -1,6 +1,7 @@
-import { HttpTypes, StoreCollection, StoreProductCategory } from '@medusajs/types';
+import type { HttpTypes, StoreCollection, StoreProductCategory } from '@medusajs/types';
 import { getSelectedRegion } from './data/regions.server';
 import { fetchProducts } from './products.server';
+import { attachVariantBatchInventory } from './variant-batches.server';
 
 export const getProductListData = async (request: Request) => {
   const region = await getSelectedRegion(request.headers);
@@ -15,6 +16,8 @@ export const getProductListData = async (request: Request) => {
     region_id: region.id,
     fields: 'id,title,handle,thumbnail,variants.*,variants.prices.*',
   });
+
+  await attachVariantBatchInventory(products);
   const collectionTabs = new Map<string, StoreCollection>();
   const categoryTabs = new Map<string, StoreProductCategory>();
 
