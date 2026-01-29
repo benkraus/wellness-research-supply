@@ -1,7 +1,7 @@
 import type { MedusaResponse, MedusaStoreRequest } from '@medusajs/framework/http';
 import { ContainerRegistrationKeys, remoteQueryObjectFromString } from '@medusajs/framework/utils';
 
-import { getFulfillmentTrackingPackages, getFulfillmentLatestTrackingUpdate } from '../../../../../lib/shipstation-tracking';
+import { getFulfillmentLatestTrackingUpdate, getFulfillmentTrackingPackages } from '../../../../lib/shipstation-tracking';
 
 type OrderRow = {
   id: string;

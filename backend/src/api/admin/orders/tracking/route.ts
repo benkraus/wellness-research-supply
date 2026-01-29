@@ -35,22 +35,56 @@ const isPackageOverdue = (pkg: { shipped_at?: string | null; tracking_status?: s
   return shippedDate.getTime() < fiveDaysAgo;
 };
 
+const normalizeIsoDate = (value?: string | Date | null) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  return value;
+};
+
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const limit = Math.min(Number(req.query.limit ?? 25) || 25, 100);
   const take = Math.min(limit * 6, 300);
 
   const fulfillmentModuleService = req.scope.resolve<IFulfillmentModuleService>(Modules.FULFILLMENT);
-  const fulfillments = (await fulfillmentModuleService.listFulfillments(
+  const fulfillments = await fulfillmentModuleService.listFulfillments(
     { provider_id: 'shipstation' },
     { order: { updated_at: 'DESC' }, take },
-  )) as FulfillmentRow[];
+  );
+
+  // biome-ignore lint/complexity/useOptionalChain: fulfillment entries are filtered before use
+  const fulfillmentRows: FulfillmentRow[] = fulfillments
+    .filter((fulfillment): fulfillment is NonNullable<typeof fulfillment> => Boolean(fulfillment))
+    .map((fulfillment) => {
+    const labels = fulfillment?.labels?.flatMap((label) => {
+      if (!label.tracking_number) {
+        return [];
+      }
+      return [
+        {
+          tracking_number: label.tracking_number,
+          tracking_url: label.tracking_url ?? null,
+          label_url: label.label_url ?? null,
+        },
+      ];
+    }) ?? [];
+    const normalizedLabels = labels?.length ? labels : null;
+
+      return {
+        id: fulfillment.id,
+        order_id: fulfillment.order_id ?? null,
+        updated_at: normalizeIsoDate(fulfillment?.updated_at),
+        shipped_at: normalizeIsoDate(fulfillment?.shipped_at),
+        metadata: fulfillment.metadata ?? null,
+        labels: normalizedLabels,
+      };
+    });
 
   const orderTrackingMap = new Map<
     string,
     { packages: ReturnType<typeof getFulfillmentTrackingPackages>; latest_update: string | null }
   >();
 
-  fulfillments.forEach((fulfillment) => {
+  fulfillmentRows.forEach((fulfillment) => {
     const packages = getFulfillmentTrackingPackages(fulfillment);
     if (packages.length === 0) {
       return;
