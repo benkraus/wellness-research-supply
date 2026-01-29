@@ -1,4 +1,3 @@
-import { redirect, useLoaderData } from 'react-router';
 import type { LoaderFunctionArgs, MetaFunction } from 'react-router';
 import { redirect, useLoaderData } from 'react-router';
 import { ProductReviewSection } from '@app/components/reviews/ProductReviewSection';
@@ -17,7 +16,7 @@ export const loader = async (args: LoaderFunctionArgs) => {
 
   const { products } = await fetchProducts(args.request, {
     handle: args.params.productHandle,
-    fields: '*categories,*variants.calculated_price,+variants.inventory_quantity',
+    fields: '*categories,*variants.calculated_price,+variants.inventory_quantity,+variants.metadata',
   });
 
   if (!products.length) throw redirect('/404');
