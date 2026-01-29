@@ -107,22 +107,36 @@ export const attachBatchInventoryQuantities = async (
       return;
     }
 
-    (variant as VariantWithBatchInventory).batch_inventory = batchInventoryByVariant.get(variant.id) ?? [];
+    const batchInventory = batchInventoryByVariant.get(variant.id) ?? [];
+    (variant as VariantWithBatchInventory).batch_inventory = batchInventory;
 
     if (includeInventory && variant.manage_inventory !== false) {
       (variant as { inventory_quantity?: number }).inventory_quantity = totals.get(variant.id) ?? 0;
     }
 
+    const baseMetadata = (variant as { metadata?: Record<string, unknown> }).metadata ?? {};
+    let nextMetadata = baseMetadata;
+
     if (includeAtPrice) {
       const costEntry = costTotals.get(variant.id);
       if (costEntry && costEntry.quantity > 0) {
         const perVialCost = costEntry.cost / costEntry.quantity;
-        const metadata = {
-          ...(variant as { metadata?: Record<string, unknown> }).metadata,
+        nextMetadata = {
+          ...nextMetadata,
           at_price_per_vial: perVialCost,
         };
-        (variant as { metadata?: Record<string, unknown> }).metadata = metadata;
       }
+    }
+
+    if (batchInventory.length) {
+      nextMetadata = {
+        ...nextMetadata,
+        batch_inventory: batchInventory,
+      };
+    }
+
+    if (nextMetadata !== baseMetadata) {
+      (variant as { metadata?: Record<string, unknown> }).metadata = nextMetadata;
     }
   });
 };

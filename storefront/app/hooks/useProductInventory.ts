@@ -13,6 +13,12 @@ type VariantWithBatchInventory = StoreProductVariant & {
   batch_inventory?: BatchInventorySummary[];
 };
 
+type VariantWithBatchInventoryMetadata = StoreProductVariant & {
+  metadata?: {
+    batch_inventory?: BatchInventorySummary[];
+  } | null;
+};
+
 const getLatestBatch = (batches: BatchInventorySummary[]) => {
   if (!batches.length) return null;
   return [...batches].sort((a, b) => {
@@ -52,7 +58,11 @@ const summarizeBatches = (batches: BatchInventorySummary[]) => {
 
 const getVariantBatches = (variant?: StoreProductVariant) => {
   if (!variant) return [];
-  return (variant as VariantWithBatchInventory).batch_inventory ?? [];
+  return (
+    (variant as VariantWithBatchInventory).batch_inventory ??
+    (variant as VariantWithBatchInventoryMetadata).metadata?.batch_inventory ??
+    []
+  );
 };
 
 export const useProductInventory = (product: StoreProduct) => {
