@@ -40,10 +40,10 @@ export const QuantitySelector: FC<QuantitySelectorProps> = ({ className, variant
             Quantity
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">Qty</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-800">Qty</span>
             <select
               {...field}
-              className="focus:border-primary-500 focus:ring-primary-500 !h-12 !w-full rounded-md border-gray-300 pl-12 pr-4"
+              className="focus:border-primary-500 focus:ring-primary-500 !h-12 !w-full rounded-md border-primary-200 bg-white pl-12 pr-4 text-primary-900"
               value={field.value || '1'}
               onChange={(e) => {
                 const value = parseInt(e.target.value, 10);
