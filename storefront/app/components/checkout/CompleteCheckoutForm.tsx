@@ -48,14 +48,18 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
   const [billingAddressId, setBillingAddressId] = useState(NEW_BILLING_ADDRESS_ID);
 
   const isSubmitting = ['submitting', 'loading'].includes(completeCartFetcher.state) || submitting;
+  const hasCart = Boolean(cart);
 
-  if (!cart) return null;
-
-  const defaultBillingAddress = medusaAddressToAddress(cart.billing_address as MedusaAddress);
-  const shippingAddress = medusaAddressToAddress(cart?.shipping_address as MedusaAddress);
+  const emptyAddress: MedusaAddress = {} as MedusaAddress;
+  const defaultBillingAddress = hasCart
+    ? medusaAddressToAddress(cart?.billing_address as MedusaAddress)
+    : medusaAddressToAddress(emptyAddress);
+  const shippingAddress = hasCart
+    ? medusaAddressToAddress(cart?.shipping_address as MedusaAddress)
+    : medusaAddressToAddress(emptyAddress);
 
   const countryOptions =
-    (cart.region?.countries?.map((country) => ({
+    (cart?.region?.countries?.map((country) => ({
       value: country.iso_2,
       label: country.display_name,
     })) as { value: string; label: string }[]) ?? [];
@@ -78,12 +82,20 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
     };
   });
 
+  const metadata = (customer?.metadata ?? {}) as Record<string, unknown>;
+  const venmoUseProfile = metadata.venmo_default_use_profile === true;
+  const venmoCustom = typeof metadata.venmo_default_contact === 'string' ? metadata.venmo_default_contact : '';
+  const venmoProfileContact = customer?.email || customer?.phone || '';
+  const venmoDefaultContact = venmoUseProfile
+    ? venmoProfileContact || venmoCustom
+    : venmoCustom;
+
   const defaultValues: CompleteCheckoutFormData = {
-    cartId: cart.id,
+    cartId: cart?.id ?? '',
     sameAsShipping: true,
     billingAddress: defaultBillingAddress,
     providerId,
-    venmoContact: '',
+    venmoContact: venmoDefaultContact,
     edebitAccountName: '',
     edebitRoutingNumber: '',
     edebitAccountNumber: '',
@@ -136,6 +148,8 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
       {isSubmitting ? 'Confirming...' : (submitMessage ?? 'Place order')}
     </SubmitButton>
   );
+
+  if (!cart) return null;
 
   if (!activePaymentSession) {
     return (

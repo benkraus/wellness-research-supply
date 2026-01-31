@@ -56,6 +56,7 @@ export async function action(actionArgs: ActionFunctionArgs) {
 
   const paymentProviders = await listCartPaymentProviders(updatedCart.region_id!);
   const provider =
+    paymentProviders.find((p) => p.id.includes('venmo')) ??
     paymentProviders.find((p) => p.id === 'pp_system_default') ??
     paymentProviders.find((p) => !p.id.includes('stripe')) ??
     paymentProviders[0];

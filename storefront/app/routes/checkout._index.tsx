@@ -63,6 +63,7 @@ const ensureCartPaymentSessions = async (request: Request, cart: StoreCart) => {
 
     const nonStripeProviders = paymentProviders.filter((p) => !p.id.includes('stripe'));
     const provider =
+      nonStripeProviders.find((p) => p.id.includes('venmo')) ??
       nonStripeProviders.find((p) => p.id === SYSTEM_PROVIDER_ID) ??
       nonStripeProviders[0];
 
