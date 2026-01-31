@@ -21,7 +21,8 @@ export const AddressFormFields = ({ prefix, countryOptions, className }: Address
       <StyledTextField name={`${prefix}.company`} label="Company (optional)" placeholder="Company" />
       <StyledTextField
         name={`${prefix}.phone`}
-        label="Phone (optional)"
+        label="Phone"
+        required
         placeholder="Phone"
         type="tel"
         inputMode="tel"

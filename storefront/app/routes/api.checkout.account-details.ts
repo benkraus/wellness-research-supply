@@ -21,7 +21,7 @@ export const accountDetailsSchema = z.object({
     province: z.string().min(1, 'Province is required'),
     countryCode: z.string().min(1, 'Country is required'),
     postalCode: z.string().min(1, 'Postal code is required'),
-    phone: z.string().optional(),
+    phone: z.string().min(1, 'Phone number is required for shipping'),
   }),
   shippingAddressId: z.string(),
   isExpressCheckout: z.boolean().optional(),

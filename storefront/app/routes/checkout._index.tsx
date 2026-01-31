@@ -119,10 +119,14 @@ export const loader = async ({
     throw redirect(`/`, { headers });
   }
 
-  await ensureSelectedCartShippingMethod(request, cart);
+  const hasPhone = !!cart.shipping_address?.phone;
+
+  if (hasPhone) {
+    await ensureSelectedCartShippingMethod(request, cart);
+  }
 
   const [shippingOptions, paymentProviders, activePaymentSession] = await Promise.all([
-    await fetchShippingOptions(cartId),
+    hasPhone ? fetchShippingOptions(cartId) : Promise.resolve([] as StoreCartShippingOption[]),
     (await listCartPaymentProviders(cart.region_id!)) as StorePaymentProvider[],
     await ensureCartPaymentSessions(request, cart),
   ]);
