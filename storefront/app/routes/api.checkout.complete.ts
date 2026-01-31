@@ -9,7 +9,7 @@ import type { ActionFunctionArgs } from 'react-router';
 import { redirect, data as remixData } from 'react-router';
 import { getValidatedFormData } from 'remix-hook-form';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 const addressSchema = z.object({
   firstName: z.string().min(1, 'First name is required').optional(),
@@ -46,7 +46,7 @@ export const completeCheckoutSchema = z
       if (!contact) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Venmo phone or email is required',
+          message: 'Venmo contact is required',
           path: ['venmoContact'],
         });
         return;
@@ -56,10 +56,10 @@ export const completeCheckoutSchema = z
       const digits = contact.replace(/\D/g, '');
       const isPhone = digits.length >= 7;
 
-      if (!isEmail && !isPhone) {
+      if (!isEmail && !isPhone && contact.length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Enter a valid Venmo phone number or email',
+          message: 'Enter a valid Venmo email, phone number, or username',
           path: ['venmoContact'],
         });
       }
@@ -158,11 +158,18 @@ export async function action(actionArgs: ActionFunctionArgs) {
   const savedMethodId = data.edebitSavedMethodId?.trim();
 
   if (venmoContact) {
-    if (venmoContact.includes('@')) {
+    const isEmail = /.+@.+\..+/.test(venmoContact);
+    const digits = venmoContact.replace(/\D/g, '');
+    const isPhone = digits.length >= 7;
+
+    if (isEmail) {
       paymentSessionData = { venmo_target: { email: venmoContact } };
-    } else {
+    } else if (isPhone) {
       const normalizedVenmo = normalizePhoneNumber(venmoContact);
       paymentSessionData = { venmo_target: { phone: normalizedVenmo ?? venmoContact } };
+    } else {
+      const normalizedHandle = venmoContact.startsWith('@') ? venmoContact.slice(1) : venmoContact;
+      paymentSessionData = { venmo_target: { user_id: normalizedHandle } };
     }
   }
 

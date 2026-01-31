@@ -13,6 +13,7 @@ import { ProductPrice } from '@app/components/product/ProductPrice';
 import { ProductPriceRange } from '@app/components/product/ProductPriceRange';
 import { ProductReviewStars } from '@app/components/reviews/ProductReviewStars';
 import { Share } from '@app/components/share';
+import { Modal } from '@app/components/common/modals/Modal';
 import { useCart } from '@app/hooks/useCart';
 import { useCustomer } from '@app/hooks/useCustomer';
 import { useProductInventory } from '@app/hooks/useProductInventory';
@@ -73,6 +74,24 @@ export interface ProductTemplateProps {
   reviewsCount: number;
   reviewStats?: StoreProductReviewStats;
 }
+
+type BatchInventorySummary = {
+  id: string;
+  lot_number?: string | null;
+  available_quantity: number;
+  has_coa: boolean;
+  created_at?: string | Date | null;
+};
+
+type VariantWithBatchInventory = StoreProductVariant & {
+  batch_inventory?: BatchInventorySummary[];
+};
+
+type VariantWithBatchInventoryMetadata = StoreProductVariant & {
+  metadata?: {
+    batch_inventory?: BatchInventorySummary[];
+  } | null;
+};
 
 export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductTemplateProps) => {
   const formRef = useRef<HTMLFormElement>(null);
@@ -236,6 +255,37 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
       };
     });
   }, [currencyCode, selectedVariant]);
+
+  const selectedVariantBatches = useMemo(() => {
+    if (!selectedVariant) return [] as BatchInventorySummary[];
+    return (
+      (selectedVariant as VariantWithBatchInventory).batch_inventory ??
+      (selectedVariant as VariantWithBatchInventoryMetadata).metadata?.batch_inventory ??
+      []
+    );
+  }, [selectedVariant]);
+
+  const activeBatches = useMemo(() => {
+    if (!selectedVariantBatches.length) return [] as BatchInventorySummary[];
+    return [...selectedVariantBatches]
+      .filter((batch) => batch.available_quantity > 0)
+      .sort((a, b) => {
+        if (b.available_quantity !== a.available_quantity) {
+          return b.available_quantity - a.available_quantity;
+        }
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [selectedVariantBatches]);
+
+  const activeCoaBatches = useMemo(() => {
+    return activeBatches
+      .filter((batch) => batch.has_coa && batch.lot_number)
+      .slice(0, 2);
+  }, [activeBatches]);
+
+  const [coaModalLot, setCoaModalLot] = useState<string | null>(null);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -485,9 +535,9 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                               </h2>
 
                               <div className="space-y-4">
-                                {productSelectOptions.map((option, optionIndex) => (
+                                {productSelectOptions.map((option) => (
                                   <ProductOptionSelectorSelect
-                                    key={optionIndex}
+                                    key={option.id}
                                     option={option}
                                     value={controlledOptions[option.id]}
                                     onChange={handleOptionChangeBySelect}
@@ -503,8 +553,8 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                               <h2 id="product-options" className="sr-only">
                                 Product options
                               </h2>
-                              {productSelectOptions.map((option, optionIndex) => (
-                                <div key={optionIndex}>
+                              {productSelectOptions.map((option) => (
+                                <div key={option.id}>
                                   <FieldLabel className="mb-2 text-primary-200">{option.title}</FieldLabel>
                                   <ProductOptionSelectorRadio
                                     option={option}
@@ -598,10 +648,9 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                             {!!product.description && (
                               <div className="mt-4">
                                 <h3 className="mb-2 text-primary-200">Description</h3>
-                                <div
-                                  className="prose prose-invert max-w-none text-primary-100"
-                                  dangerouslySetInnerHTML={{ __html: product.description }}
-                                />
+                                <p className="prose prose-invert max-w-none text-primary-100 whitespace-pre-line">
+                                  {product.description}
+                                </p>
                               </div>
                             )}
 
@@ -615,6 +664,29 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                 batches of the same product on hand at once, so there is not a single COA displayed on
                                 the product page.
                               </p>
+                              <div className="mt-4 space-y-2">
+                                {activeCoaBatches.length > 0 ? (
+                                  activeCoaBatches.map((batch) => (
+                                    <button
+                                      key={batch.id}
+                                      type="button"
+                                      onClick={() => setCoaModalLot(batch.lot_number ?? null)}
+                                      className="inline-flex items-center gap-2 rounded-full border border-primary-200/30 px-4 py-2 text-xs font-semibold text-primary-50 hover:bg-highlight-100/40"
+                                    >
+                                      View COA PDF
+                                      {batch.lot_number ? (
+                                        <span className="text-primary-200">(Lot {batch.lot_number})</span>
+                                      ) : null}
+                                    </button>
+                                  ))
+                                ) : activeBatches.length > 0 ? (
+                                  <p className="text-sm text-primary-200">
+                                    COA pending for the current batch.
+                                  </p>
+                                ) : (
+                                  <p className="text-sm text-primary-200">No active batches available.</p>
+                                )}
+                              </div>
                               <p className="mt-3 text-xs text-primary-200">
                                 Have a lot number?{' '}
                                 <Link to="/coa" className="font-semibold text-primary-50 underline underline-offset-4">
@@ -629,8 +701,8 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                 <h3 className="mb-2 text-primary-200">Categories</h3>
 
                                 <ol className="flex flex-wrap items-center gap-2 text-xs text-primary-200">
-                                  {product.categories.map((category, categoryIndex) => (
-                                    <li key={categoryIndex}>
+                                  {product.categories.map((category) => (
+                                    <li key={`${category.id ?? category.handle ?? category.name}` }>
                                       <Button
                                         as={(buttonProps) => (
                                           <Link to={`/categories/${category.handle}`} {...buttonProps} />
@@ -650,8 +722,8 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                 <h3 className="mb-2 text-primary-200">Tags</h3>
 
                                 <ol className="flex flex-wrap items-center gap-2 text-xs text-primary-200">
-                                  {product.tags.map((tag, tagIndex) => (
-                                    <li key={tagIndex}>
+                                  {product.tags.map((tag) => (
+                                    <li key={`${tag.id ?? tag.value}` }>
                                       <Button className="!h-auto whitespace-nowrap !rounded !px-2 !py-1 !text-xs !font-bold bg-accent-900 cursor-default">
                                         {tag.value}
                                       </Button>
@@ -679,6 +751,35 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
           </addToCartFetcher.Form>
         </RemixFormProvider>
       </section>
+      <Modal isOpen={Boolean(coaModalLot)} onClose={() => setCoaModalLot(null)}>
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">COA PDF</p>
+            <h3 className="mt-2 text-lg font-semibold text-slate-900">
+              {coaModalLot ? `Lot ${coaModalLot}` : 'Certificate of Analysis'}
+            </h3>
+          </div>
+          {coaModalLot && (
+            <div className="h-[70vh] w-full overflow-hidden rounded-lg border border-slate-200">
+              <iframe
+                title={`COA ${coaModalLot}`}
+                src={`/api/coa/${encodeURIComponent(coaModalLot)}.pdf`}
+                className="h-full w-full"
+              />
+            </div>
+          )}
+          {coaModalLot && (
+            <a
+              href={`/api/coa/${encodeURIComponent(coaModalLot)}.pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-primary-600 underline underline-offset-4"
+            >
+              Open PDF in a new tab
+            </a>
+          )}
+        </div>
+      </Modal>
     </>
   );
 };

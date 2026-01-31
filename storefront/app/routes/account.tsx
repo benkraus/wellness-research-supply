@@ -36,6 +36,16 @@ type AuthResponse = {
 	warning?: string;
 };
 
+type EdebitSavedMethod = {
+	id: string;
+	label?: string;
+	bank_name?: string;
+	account_last4?: string;
+	routing_last4?: string;
+	created_at?: string;
+	is_default?: boolean;
+};
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
 	const url = new URL(request.url);
 	const page = Math.max(1, Number(url.searchParams.get("page") || "1"));
@@ -154,6 +164,7 @@ export default function AccountRoute() {
 	const location = useLocation();
 	const [view, setView] = useState<"login" | "register">("login");
 	const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+	const [editingEdebitId, setEditingEdebitId] = useState<string | null>(null);
 	const lastSuccessRef = useRef(new Map<string, unknown>());
 
 	const loginFetcher = useFetcher<AuthResponse>();
@@ -166,8 +177,27 @@ export default function AccountRoute() {
 	const addressFetcher = useFetcher<AuthResponse>();
 	const addressActionFetcher = useFetcher<AuthResponse>();
 	const addressUpdateFetcher = useFetcher<AuthResponse>();
+	const edebitFetcher = useFetcher<{ methods?: EdebitSavedMethod[]; errors?: { root?: { message?: string } }; success?: boolean }>();
+	const edebitActionFetcher = useFetcher<{ methods?: EdebitSavedMethod[]; errors?: { root?: { message?: string } }; success?: boolean }>();
+	const paymentPrefsFetcher = useFetcher<AuthResponse>();
 
 	const emailVerified = customer?.metadata?.email_verified !== false;
+	const metadata = (customer?.metadata ?? {}) as Record<string, unknown>;
+	const venmoDefaultUseProfile = metadata.venmo_default_use_profile === true;
+	const venmoDefaultContact = typeof metadata.venmo_default_contact === "string" ? metadata.venmo_default_contact : "";
+	const [venmoUseProfile, setVenmoUseProfile] = useState(venmoDefaultUseProfile);
+	const [venmoCustomContact, setVenmoCustomContact] = useState(venmoDefaultContact);
+	const venmoProfileContact = customer?.email || customer?.phone || "";
+
+	const edebitMethodsFromCustomer = useMemo(() => {
+		const methods = metadata.edebit_payment_methods;
+		if (!Array.isArray(methods)) return [] as EdebitSavedMethod[];
+		return methods as EdebitSavedMethod[];
+	}, [metadata.edebit_payment_methods]);
+
+	const [edebitMethods, setEdebitMethods] = useState<EdebitSavedMethod[]>(
+		edebitMethodsFromCustomer,
+	);
 
 	const countryOptions = useMemo(
 		() =>
@@ -206,6 +236,9 @@ export default function AccountRoute() {
 			["address", addressFetcher.data],
 			["addressAction", addressActionFetcher.data],
 			["addressUpdate", addressUpdateFetcher.data],
+			["edebit", edebitFetcher.data],
+			["edebitAction", edebitActionFetcher.data],
+			["paymentPrefs", paymentPrefsFetcher.data],
 		].some(([key, data]) =>
 			shouldRevalidate(key, data as { success?: boolean } | undefined),
 		);
@@ -224,6 +257,9 @@ export default function AccountRoute() {
 		addressFetcher.data,
 		addressActionFetcher.data,
 		addressUpdateFetcher.data,
+		edebitFetcher.data,
+		edebitActionFetcher.data,
+		paymentPrefsFetcher.data,
 		isSubRoute,
 		revalidator,
 		revalidator.state,
@@ -271,7 +307,33 @@ export default function AccountRoute() {
 		}
 	}, [addressUpdateFetcher.data?.success]);
 
+	useEffect(() => {
+		setVenmoUseProfile(venmoDefaultUseProfile);
+		setVenmoCustomContact(venmoDefaultContact);
+	}, [venmoDefaultUseProfile, venmoDefaultContact]);
+
+	useEffect(() => {
+		setEdebitMethods(edebitMethodsFromCustomer);
+	}, [edebitMethodsFromCustomer]);
+
+	useEffect(() => {
+		if (edebitFetcher.data?.methods) {
+			setEdebitMethods(edebitFetcher.data.methods);
+		}
+	}, [edebitFetcher.data]);
+
+	useEffect(() => {
+		if (edebitActionFetcher.data?.methods) {
+			setEdebitMethods(edebitActionFetcher.data.methods);
+		}
+	}, [edebitActionFetcher.data]);
+
 	const addresses = customer?.addresses ?? [];
+	const edebitErrorMessage =
+		edebitFetcher.data?.errors?.root?.message ||
+		edebitActionFetcher.data?.errors?.root?.message ||
+		"";
+	const edebitSuccess = edebitFetcher.data?.success || edebitActionFetcher.data?.success;
 
 	if (isSubRoute) {
 		return <Outlet />;
@@ -909,13 +971,319 @@ export default function AccountRoute() {
 																: "Save address"}
 														</button>
 													</div>
-												</addressFetcher.Form>
+										</addressFetcher.Form>
+									</div>
+								</div>
+
+								<div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
+									<h2 className="text-lg font-semibold text-primary-50">
+										Payment methods
+									</h2>
+									<p className="mt-1 text-sm text-primary-200">
+										Manage saved bank accounts for eDebit (ACH).
+									</p>
+
+									{edebitErrorMessage && (
+										<p className="mt-3 text-sm text-red-300">{edebitErrorMessage}</p>
+									)}
+									{edebitSuccess && (
+										<p className="mt-3 text-sm text-emerald-300">
+											Bank account updated.
+										</p>
+									)}
+
+									<div className="mt-6 space-y-4">
+										{edebitMethods.length === 0 && (
+											<p className="text-sm text-primary-200">No saved bank accounts yet.</p>
+										)}
+										{edebitMethods.map((method) => {
+											const isEditing = editingEdebitId === method.id;
+											return (
+												<div
+													key={method.id}
+													className={clsx(
+														"rounded-xl border p-4",
+														method.is_default
+															? "border-primary-400/40 bg-primary-900/10"
+															: "border-primary-900/15 bg-highlight-100/60",
+													)}
+												>
+													<div className="flex flex-wrap items-start justify-between gap-4">
+														<div>
+															<p className="text-sm font-semibold text-primary-50">
+																{method.label || method.bank_name || "Saved bank account"}
+															</p>
+															<p className="mt-1 text-sm text-primary-200">
+																{method.bank_name || "Bank"}
+																{method.account_last4 ? ` •••• ${method.account_last4}` : ""}
+															</p>
+														</div>
+														<div className="flex flex-wrap gap-2">
+															<button
+																type="button"
+																onClick={() =>
+																	setEditingEdebitId(isEditing ? null : method.id)
+																}
+																className="rounded-full border border-primary-200/30 px-3 py-1 text-xs font-semibold text-primary-50"
+															>
+																{isEditing ? "Cancel" : "Edit"}
+															</button>
+															{method.is_default ? (
+																<span className="rounded-full bg-primary-600/20 px-3 py-1 text-xs font-semibold text-primary-50">
+																	Default
+																</span>
+															) : (
+																<edebitActionFetcher.Form method="post" action="/api/edebit/methods">
+																	<input type="hidden" name="action" value="default" />
+																	<input type="hidden" name="methodId" value={method.id} />
+																	<button
+																		type="submit"
+																		className="rounded-full border border-primary-200/30 px-3 py-1 text-xs font-semibold text-primary-50"
+																		disabled={edebitActionFetcher.state !== "idle"}
+																	>
+																		Make default
+																	</button>
+																</edebitActionFetcher.Form>
+															)}
+															<edebitActionFetcher.Form method="post" action="/api/edebit/methods">
+																	<input type="hidden" name="action" value="delete" />
+																	<input type="hidden" name="methodId" value={method.id} />
+																	<button
+																		type="submit"
+																		className="rounded-full border border-red-400/40 px-3 py-1 text-xs font-semibold text-red-200"
+																		disabled={edebitActionFetcher.state !== "idle"}
+																	>
+																		Remove
+																	</button>
+																</edebitActionFetcher.Form>
+														</div>
+													</div>
+
+													{isEditing && (
+														<div className="mt-6 rounded-xl border border-primary-900/15 bg-highlight-100/80 p-5">
+															<h4 className="text-sm font-semibold text-primary-50">
+																Edit bank account
+															</h4>
+															<p className="mt-2 text-xs text-primary-200">
+																Enter the full account details to update this saved method.
+															</p>
+															<edebitFetcher.Form
+																method="post"
+																action="/api/edebit/methods"
+																className="mt-4 grid gap-4 sm:grid-cols-2"
+															>
+																<input type="hidden" name="action" value="update" />
+																<input type="hidden" name="methodId" value={method.id} />
+																<Input
+																	name="label"
+																	type="text"
+																	placeholder="Label (optional)"
+																	defaultValue={method.label || ""}
+																	className={`${inputClassName} sm:col-span-2`}
+																/>
+																<Input
+																	name="accountName"
+																	type="text"
+																	placeholder="Account holder name"
+																	required
+																	className={inputClassName}
+																/>
+																<Input
+																	name="bankName"
+																	type="text"
+																	placeholder="Bank name"
+																	required
+																	className={inputClassName}
+																/>
+																<Input
+																	name="routingNumber"
+																	type="text"
+																	placeholder="Routing number"
+																	required
+																	className={inputClassName}
+																/>
+																<Input
+																	name="accountNumber"
+																	type="text"
+																	placeholder="Account number"
+																	required
+																	className={inputClassName}
+																/>
+																<Input
+																	name="phone"
+																	type="tel"
+																	placeholder="Phone number"
+																	required
+																	className={inputClassName}
+																/>
+																<div className="sm:col-span-2 flex flex-wrap items-center gap-4 text-sm text-primary-200">
+																	<div className="inline-flex items-center gap-2">
+																		<input
+																			id={`edebit-default-${method.id}`}
+																			name="makeDefault"
+																			type="checkbox"
+																			defaultChecked={method.is_default}
+																			className="accent-primary-500 text-primary-500 focus:ring-primary-400 block h-4 w-4 rounded border border-primary-200/40 bg-highlight-50/80 shadow-sm focus:ring-2 focus:ring-offset-0"
+																		/>
+																		<span>Make this my default bank account</span>
+																	</div>
+																</div>
+																<div className="sm:col-span-2">
+																	<button
+																		type="submit"
+																		className="rounded-full bg-primary-600 px-6 py-2 text-sm font-semibold text-primary-900 hover:bg-primary-700"
+																		disabled={edebitFetcher.state !== "idle"}
+																	>
+																		{edebitFetcher.state !== "idle" ? "Saving…" : "Save changes"}
+																	</button>
+																</div>
+															</edebitFetcher.Form>
+														</div>
+													)}
+												</div>
+											);
+										})}
+									</div>
+
+									<div className="mt-8 rounded-xl border border-primary-900/15 bg-highlight-100/80 p-6">
+										<h3 className="text-base font-semibold text-primary-50">
+											Add a new bank account
+										</h3>
+										<edebitFetcher.Form
+											method="post"
+											action="/api/edebit/methods"
+											className="mt-4 grid gap-4 sm:grid-cols-2"
+										>
+											<input type="hidden" name="action" value="create" />
+											<Input
+												name="label"
+												type="text"
+												placeholder="Label (optional)"
+												className={`${inputClassName} sm:col-span-2`}
+											/>
+											<Input
+												name="accountName"
+												type="text"
+												placeholder="Account holder name"
+												required
+												className={inputClassName}
+											/>
+											<Input
+												name="bankName"
+												type="text"
+												placeholder="Bank name"
+												required
+												className={inputClassName}
+											/>
+											<Input
+												name="routingNumber"
+												type="text"
+												placeholder="Routing number"
+												required
+												className={inputClassName}
+											/>
+											<Input
+												name="accountNumber"
+												type="text"
+												placeholder="Account number"
+												required
+												className={inputClassName}
+											/>
+											<Input
+												name="phone"
+												type="tel"
+												placeholder="Phone number"
+												required
+												className={inputClassName}
+											/>
+											<div className="sm:col-span-2 flex flex-wrap items-center gap-4 text-sm text-primary-200">
+												<div className="inline-flex items-center gap-2">
+													<input
+														id="edebit-default-new"
+														name="makeDefault"
+														type="checkbox"
+														className="accent-primary-500 text-primary-500 focus:ring-primary-400 block h-4 w-4 rounded border border-primary-200/40 bg-highlight-50/80 shadow-sm focus:ring-2 focus:ring-offset-0"
+													/>
+													<span>Make this my default bank account</span>
+												</div>
 											</div>
+											<div className="sm:col-span-2">
+												<button
+													type="submit"
+													className="rounded-full bg-primary-600 px-6 py-2 text-sm font-semibold text-primary-900 hover:bg-primary-700"
+													disabled={edebitFetcher.state !== "idle"}
+												>
+													{edebitFetcher.state !== "idle" ? "Saving…" : "Save bank account"}
+												</button>
+											</div>
+										</edebitFetcher.Form>
+									</div>
+								</div>
+
+								<div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
+									<h2 className="text-lg font-semibold text-primary-50">Venmo defaults</h2>
+									<p className="mt-1 text-sm text-primary-200">
+										Set a default Venmo contact for payment requests.
+									</p>
+
+									<paymentPrefsFetcher.Form
+										method="post"
+										action="/api/account/payment-preferences"
+										className="mt-4 space-y-4"
+									>
+										<div className="inline-flex items-center gap-2 text-sm text-primary-200">
+											<input
+												id="venmo-use-profile"
+												name="venmoUseProfile"
+												type="checkbox"
+												checked={venmoUseProfile}
+												onChange={(event) => setVenmoUseProfile(event.currentTarget.checked)}
+												className="accent-primary-500 text-primary-500 focus:ring-primary-400 block h-4 w-4 rounded border border-primary-200/40 bg-highlight-50/80 shadow-sm focus:ring-2 focus:ring-offset-0"
+											/>
+											<label htmlFor="venmo-use-profile">
+												Use my profile email or phone
+											</label>
 										</div>
 
-										<div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
-											<h2 className="text-lg font-semibold text-primary-50">
-												Order history
+										{venmoUseProfile && !venmoProfileContact && (
+											<p className="text-xs text-amber-200">
+												Add an email or phone number in account details to use this option.
+											</p>
+										)}
+
+										<Input
+											name="venmoContact"
+											type="text"
+											disabled={venmoUseProfile}
+											value={venmoUseProfile ? venmoProfileContact : venmoCustomContact}
+											placeholder="email, phone number, or @handle"
+											onChange={(event) => setVenmoCustomContact(event.currentTarget.value)}
+											className={inputClassName}
+										/>
+
+										{venmoUseProfile && (
+											<input type="hidden" name="venmoContact" value={venmoCustomContact} />
+										)}
+
+										{paymentPrefsFetcher.data?.error && (
+											<p className="text-sm text-red-300">{paymentPrefsFetcher.data.error}</p>
+										)}
+										{paymentPrefsFetcher.data?.success && (
+											<p className="text-sm text-emerald-300">Venmo default saved.</p>
+										)}
+										<button
+											type="submit"
+											className="rounded-full bg-primary-600 px-6 py-2 text-sm font-semibold text-primary-900 hover:bg-primary-700"
+											disabled={paymentPrefsFetcher.state !== "idle"}
+										>
+											{paymentPrefsFetcher.state !== "idle" ? "Saving…" : "Save Venmo default"}
+										</button>
+									</paymentPrefsFetcher.Form>
+								</div>
+
+								<div className="rounded-2xl border border-primary-900/15 bg-highlight-50/80 p-6 shadow-[0_18px_40px_-30px_rgba(8,15,26,0.9)]">
+									<h2 className="text-lg font-semibold text-primary-50">
+										Order history
 											</h2>
 											<p className="mt-1 text-sm text-primary-200">
 												Review your recent orders and totals.
