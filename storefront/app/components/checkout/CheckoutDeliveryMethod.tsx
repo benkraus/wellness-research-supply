@@ -15,7 +15,7 @@ import {
 import { formatPrice } from '@libs/util/prices';
 import type { StoreCart, StoreCartShippingOption } from '@medusajs/types';
 import type { BaseCartShippingMethod } from '@medusajs/types/dist/http/cart/common';
-import { FC, Fragment, useEffect, useMemo } from 'react';
+import { FC, Fragment, useEffect, useMemo, useRef } from 'react';
 import { useFetcher } from 'react-router';
 import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
 import { CheckoutSectionHeader } from './CheckoutSectionHeader';
@@ -43,11 +43,16 @@ const getDefaultValues = (cart: StoreCart, shippingOptionsByProfile: { [key: str
 const areArraysEqual = (left: string[], right: string[]) =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
-export const CheckoutDeliveryMethod: FC = () => {
+export interface CheckoutDeliveryMethodProps {
+  showHeader?: boolean;
+}
+
+export const CheckoutDeliveryMethod: FC<CheckoutDeliveryMethodProps> = ({ showHeader = true }) => {
   const fetcher = useFetcher<{ errors?: unknown; cart?: StoreCart }>();
   const { step, shippingOptions, setStep, goToNextStep, cart, isCartMutating } = useCheckout();
-  const isActiveStep = step === CheckoutStep.PAYMENT;
-  const isSubmitting = ['submitting', 'loading'].includes(fetcher.state);
+  const isActiveStep = step === CheckoutStep.ACCOUNT_DETAILS;
+  const autoSelectRef = useRef(false);
+  const previousFetcherState = useRef(fetcher.state);
 
   const hasErrors = !!fetcher.data?.errors;
   const hasCompletedAccountDetails = cart ? checkAccountDetailsComplete(cart) : false;
@@ -103,18 +108,45 @@ export const CheckoutDeliveryMethod: FC = () => {
   }, [cart?.shipping_methods, form, values]);
 
   useEffect(() => {
-    if (isActiveStep && !isSubmitting && !hasErrors && isComplete) goToNextStep();
-  }, [goToNextStep, hasErrors, isActiveStep, isComplete, isSubmitting]);
+    const wasSubmitting = ['submitting', 'loading'].includes(previousFetcherState.current);
+    const isIdle = fetcher.state === 'idle';
+
+    if (isActiveStep && wasSubmitting && isIdle && !hasErrors && isComplete) {
+      goToNextStep();
+    }
+
+    previousFetcherState.current = fetcher.state;
+  }, [fetcher.state, goToNextStep, hasErrors, isActiveStep, isComplete]);
 
   const showCompleted = !isActiveStep && hasCompletedAccountDetails;
+
+  useEffect(() => {
+    if (!isActiveStep) return;
+    if (!hasCompletedAccountDetails) return;
+    if (!cart?.region) return;
+
+    const profiles = Object.values(shippingOptionsByProfile);
+    if (!profiles.length) return;
+    const hasSingleOption = profiles.every((options) => options.length === 1);
+    if (!hasSingleOption) return;
+    if (cart?.shipping_methods?.length) return;
+    if (autoSelectRef.current) return;
+
+    autoSelectRef.current = true;
+    const selectedIds = profiles.map((options) => options[0].id);
+    form.setValue('shippingOptionIds', selectedIds);
+    form.handleSubmit();
+  }, [cart?.region, cart?.shipping_methods, form, hasCompletedAccountDetails, isActiveStep, shippingOptionsByProfile]);
 
   if (!cart?.region) return null;
 
   return (
     <div className="checkout-delivery-method">
-      <CheckoutSectionHeader completed={showCompleted} setStep={setStep} step={CheckoutStep.PAYMENT}>
-        Delivery & Payment
-      </CheckoutSectionHeader>
+      {showHeader && (
+        <CheckoutSectionHeader completed={showCompleted} setStep={setStep} step={CheckoutStep.ACCOUNT_DETAILS}>
+          Shipping
+        </CheckoutSectionHeader>
+      )}
 
       {!isActiveStep && (
         <>
@@ -142,7 +174,13 @@ export const CheckoutDeliveryMethod: FC = () => {
         </>
       )}
 
-      {isActiveStep && (
+      {isActiveStep && !hasCompletedAccountDetails && (
+        <Alert type="info" tone="dark" className="my-6">
+          Enter your shipping details and calculate shipping to see delivery options.
+        </Alert>
+      )}
+
+      {isActiveStep && hasCompletedAccountDetails && (
         <RemixFormProvider {...form}>
           <fetcher.Form>
             <TextField type="hidden" name="cartId" value={cart.id} />

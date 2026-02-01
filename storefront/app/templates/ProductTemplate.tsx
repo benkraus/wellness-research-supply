@@ -14,6 +14,7 @@ import { ProductPriceRange } from '@app/components/product/ProductPriceRange';
 import { ProductReviewStars } from '@app/components/reviews/ProductReviewStars';
 import { Share } from '@app/components/share';
 import { Modal } from '@app/components/common/modals/Modal';
+import { HtmlContent } from '@app/components/common/content/HtmlContent';
 import { useCart } from '@app/hooks/useCart';
 import { useCustomer } from '@app/hooks/useCustomer';
 import { useProductInventory } from '@app/hooks/useProductInventory';
@@ -648,9 +649,10 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                             {!!product.description && (
                               <div className="mt-4">
                                 <h3 className="mb-2 text-primary-200">Description</h3>
-                                <p className="prose prose-invert max-w-none text-primary-100 whitespace-pre-line">
-                                  {product.description}
-                                </p>
+                                <HtmlContent
+                                  html={product.description}
+                                  className="prose prose-invert max-w-none text-primary-100"
+                                />
                               </div>
                             )}
 

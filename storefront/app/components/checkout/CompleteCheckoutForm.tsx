@@ -7,12 +7,11 @@ import { Checkbox, TextField } from '@lambdacurry/forms/remix-hook-form';
 import { type MedusaAddress } from '@libs/types';
 import { medusaAddressToAddress } from '@libs/util';
 import { FetcherKeys } from '@libs/util/fetcher-keys';
-import { FC, FormEvent, PropsWithChildren, useState } from 'react';
+import { FC, FormEvent, PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { SubmitFunction, useFetcher } from 'react-router';
 import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
 import { CheckoutOrderSummary } from '.';
 import { FormError } from '../common/remix-hook-form/forms/FormError';
-import { AddressDisplay } from './address/AddressDisplay';
 import { AddressFormFields } from './address/AddressFormFields';
 
 export interface CompleteCheckoutFormProps extends PropsWithChildren {
@@ -117,6 +116,20 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
 
   const sameAsShipping = form.watch('sameAsShipping');
   const billingAddress = form.watch('billingAddress');
+  const isBillingDisabled = sameAsShipping === true;
+  const shippingAddressSnapshot = useMemo(() => shippingAddress, [shippingAddress]);
+
+  useEffect(() => {
+    if (!sameAsShipping) return;
+    const current = form.getValues('billingAddress');
+    const next = shippingAddressSnapshot;
+    const fields = ['firstName', 'lastName', 'company', 'phone', 'address1', 'address2', 'city', 'province', 'postalCode', 'countryCode'] as const;
+
+    const isSame = fields.every((field) => current?.[field] === next?.[field]);
+    if (isSame) return;
+
+    form.setValue('billingAddress', next);
+  }, [form, sameAsShipping, shippingAddressSnapshot]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -170,68 +183,63 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
           <TextField type="hidden" name="cartId" value={cart.id} />
           <TextField type="hidden" name="providerId" value={providerId} />
 
-          <h3 className="text-lg font-bold text-gray-900">Billing address</h3>
+          <h2 className="text-2xl font-bold text-primary-50">Billing</h2>
 
           <Checkbox className="my-4" name="sameAsShipping" label="Same as shipping address" />
 
-          {!sameAsShipping && (
-            <>
-              {billingAddressOptions.length > 0 && (
-                <div className="mt-4">
-                  <label className="text-[16px] text-gray-600" htmlFor="billingAddressSelect">
-                    Saved billing addresses
-                  </label>
-                  <select
-                    id="billingAddressSelect"
-                    className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-sm shadow-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                    value={billingAddressId}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setBillingAddressId(value);
+          {!isBillingDisabled && billingAddressOptions.length > 0 && (
+            <div className="mt-4">
+              <label className="text-[16px] text-primary-200" htmlFor="billingAddressSelect">
+                Saved billing addresses
+              </label>
+              <select
+                id="billingAddressSelect"
+                className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-primary-900/40 bg-highlight-100 px-3 text-sm text-primary-50 shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/40"
+                value={billingAddressId}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setBillingAddressId(value);
 
-                      if (value === NEW_BILLING_ADDRESS_ID) {
-                        form.setValue('billingAddress', {
-                          firstName: '',
-                          lastName: '',
-                          company: '',
-                          phone: '',
-                          address1: '',
-                          address2: '',
-                          city: '',
-                          province: '',
-                          postalCode: '',
-                          countryCode: '',
-                        });
-                        return;
-                      }
+                  if (value === NEW_BILLING_ADDRESS_ID) {
+                    form.setValue('billingAddress', {
+                      firstName: '',
+                      lastName: '',
+                      company: '',
+                      phone: '',
+                      address1: '',
+                      address2: '',
+                      city: '',
+                      province: '',
+                      postalCode: '',
+                      countryCode: '',
+                    });
+                    return;
+                  }
 
-                      const selected = billingAddressOptions.find((option) => option.id === value);
-                      if (selected) {
-                        form.setValue('billingAddress', selected.address);
-                      }
-                    }}
-                  >
-                    {billingAddressOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                    <option value={NEW_BILLING_ADDRESS_ID}>Use a new billing address</option>
-                  </select>
-                </div>
-              )}
-
-              <AddressFormFields prefix="billingAddress" countryOptions={countryOptions} className="mt-4" />
-            </>
-          )}
-
-          {sameAsShipping && (
-            <div className="-mt-2 mb-4">
-              <AddressDisplay address={shippingAddress} countryOptions={countryOptions} />
+                  const selected = billingAddressOptions.find((option) => option.id === value);
+                  if (selected) {
+                    form.setValue('billingAddress', selected.address);
+                  }
+                }}
+              >
+                {billingAddressOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+                <option value={NEW_BILLING_ADDRESS_ID}>Use a new billing address</option>
+              </select>
             </div>
           )}
 
-          <div className="mt-4">{children}</div>
+          <AddressFormFields
+            prefix="billingAddress"
+            countryOptions={countryOptions}
+            className="mt-4"
+            disabled={isBillingDisabled}
+          />
+
+          <div className="mt-6">{children}</div>
 
           <FormError />
         </completeCartFetcher.Form>

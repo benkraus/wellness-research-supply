@@ -8,14 +8,15 @@ export const CheckoutSectionHeader: FC<
     completed: boolean;
     setStep: (step: CheckoutStep) => void;
     step: CheckoutStep;
+    onEdit?: () => void;
   }>
-> = ({ completed, setStep, step, children }) => {
+> = ({ completed, setStep, step, onEdit, children }) => {
   return (
     <header className="relative flex items-center justify-between">
       <h2 className="text-2xl font-bold text-primary-50">{children}</h2>
       {completed && (
         <>
-          <Button className="text-sm" variant="link" onClick={() => setStep(step)}>
+          <Button className="text-sm" variant="link" onClick={onEdit ?? (() => setStep(step))}>
             Edit
           </Button>
           <span className="absolute -left-10 mt-0.5 hidden h-6 w-6 items-center justify-center rounded-full bg-green-500/20 text-green-200 md:flex">

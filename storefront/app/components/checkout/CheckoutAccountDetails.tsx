@@ -13,7 +13,7 @@ import { checkAccountDetailsComplete } from '@libs/util/checkout';
 import { FetcherKeys } from '@libs/util/fetcher-keys';
 import { formatPhoneNumberInput } from '@libs/util/phoneNumber';
 import clsx from 'clsx';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { FieldErrors } from 'react-hook-form';
 import { useFetcher } from 'react-router';
 import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
@@ -116,12 +116,30 @@ const CheckoutAccountDetailsContent = ({
   const checkoutFieldClassName =
     '[&_label]:text-primary-200 [&_input]:!bg-highlight-100 [&_input]:text-primary-50 [&_input]:border-primary-900/40 [&_input]:placeholder:text-primary-200/70 [&_input]:focus:border-primary-400 [&_input]:focus:ring-primary-400/40 [&_input:-webkit-autofill]:!shadow-[0_0_0_1000px_rgb(6_33_50)_inset] [&_input:-webkit-autofill]:!text-primary-50';
 
+  const previousFetcherState = useRef(checkoutAccountDetailsFormFetcher.state);
+
   useEffect(() => {
-    if (isActiveStep && !isSubmitting && !hasErrors && isComplete) {
+    const wasSubmitting = ['submitting', 'loading'].includes(previousFetcherState.current);
+    const isIdle = checkoutAccountDetailsFormFetcher.state === 'idle';
+
+    if (isActiveStep && wasSubmitting && isIdle && !hasErrors && isComplete) {
       form.reset();
-      goToNextStep();
+
+      if (cart.shipping_methods?.length) {
+        goToNextStep();
+      }
     }
-  }, [isActiveStep, isSubmitting, hasErrors, isComplete, form, goToNextStep]);
+
+    previousFetcherState.current = checkoutAccountDetailsFormFetcher.state;
+  }, [
+    cart.shipping_methods?.length,
+    checkoutAccountDetailsFormFetcher.state,
+    form,
+    goToNextStep,
+    hasErrors,
+    isActiveStep,
+    isComplete,
+  ]);
 
   useEffect(() => {
     if (!addressOptions.length) return;
@@ -160,11 +178,22 @@ const CheckoutAccountDetailsContent = ({
   };
 
   const showCompleted = isComplete && !isActiveStep;
+  const handleEdit = () => {
+    setStep(CheckoutStep.ACCOUNT_DETAILS);
+    requestAnimationFrame(() => {
+      document.getElementById('checkout-account-details-form')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  };
 
   return (
     <div className="checkout-account-details">
-      <CheckoutSectionHeader completed={showCompleted} setStep={setStep} step={CheckoutStep.ACCOUNT_DETAILS}>
-        Account details
+      <CheckoutSectionHeader
+        completed={showCompleted}
+        setStep={setStep}
+        step={CheckoutStep.ACCOUNT_DETAILS}
+        onEdit={handleEdit}
+      >
+        Shipping
       </CheckoutSectionHeader>
 
       {!isActiveStep && isComplete && (
@@ -173,11 +202,11 @@ const CheckoutAccountDetailsContent = ({
 
       {isActiveStep && (
         <>
-          {customerData?.email ? (
-            <p className="mt-2 text-sm mb-2">To get started, please enter your shipping address.</p>
-          ) : (
-            <p className="mt-2 text-sm mb-4">To get started, enter your email address.</p>
-          )}
+            {customerData?.email ? (
+              <p className="mt-2 text-sm mb-2">Enter your shipping details to calculate delivery options.</p>
+            ) : (
+              <p className="mt-2 text-sm mb-4">Enter your email and shipping details to calculate delivery options.</p>
+            )}
 
           <RemixFormProvider {...form}>
             <checkoutAccountDetailsFormFetcher.Form id="checkout-account-details-form" onSubmit={form.handleSubmit}>
@@ -246,7 +275,11 @@ const CheckoutAccountDetailsContent = ({
 
               <Actions>
                 <SubmitButton disabled={isSubmitting || isCartMutating}>
-                  {isSubmitting ? 'Saving...' : 'Save and continue'}
+                  {isSubmitting
+                    ? 'Saving...'
+                    : isComplete
+                      ? 'Save shipping'
+                      : 'Calculate shipping'}
                 </SubmitButton>
 
                 {isComplete && (

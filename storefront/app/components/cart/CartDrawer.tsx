@@ -15,7 +15,7 @@ import { CartDrawerItem } from './CartDrawerItem';
 // Cart Drawer Header Component
 const CartDrawerHeader: FC<{ itemCount: number; onClose: () => void }> = ({ itemCount, onClose }) => (
   <div className="flex items-start justify-between">
-    <DialogTitle className="text-lg font-bold text-gray-900">
+    <DialogTitle className="text-lg font-bold text-primary-50">
       My Cart{' '}
       {itemCount > 0 && (
         <span className="pl-2">
@@ -24,35 +24,37 @@ const CartDrawerHeader: FC<{ itemCount: number; onClose: () => void }> = ({ item
       )}
     </DialogTitle>
     <div className="ml-3 flex h-7 items-center">
-      <IconButton icon={XMarkIcon} onClick={onClose} className="-m-2" aria-label="Close panel" />
+      <IconButton icon={XMarkIcon} onClick={onClose} className="-m-2 text-primary-50" aria-label="Close panel" />
     </div>
   </div>
 );
 
 // Cart Drawer Empty Component
-const CartDrawerEmpty: FC = () => <p className="text-center text-sm text-gray-500">Looks like your cart is empty!</p>;
+const CartDrawerEmpty: FC = () => (
+  <p className="text-center text-sm text-primary-200">Looks like your cart is empty!</p>
+);
 
 // Cart Drawer Loading Component
 const CartDrawerLoading: FC<{ className?: string }> = ({ className }) => (
   <li className={clsx('list-none', className)}>
-    <div className="flex animate-pulse space-x-4">
-      <div className="h-24 w-24 rounded-md bg-slate-300" />
-      <div className="flex h-24 w-full flex-1 flex-col space-y-3 py-1">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 h-2 rounded bg-slate-300" />
-          <div className="col-span-1 h-2 rounded bg-slate-300" />
-        </div>
-        <div className="h-2 rounded bg-slate-300" />
-        <div className="flex-1" />
-        <div className="grid grid-cols-4 gap-4">
-          <div className="col-span-1 h-2 rounded bg-slate-300" />
-          <div className="col-span-2" />
-          <div className="col-span-1 h-2 rounded bg-slate-300" />
+      <div className="flex animate-pulse space-x-4">
+        <div className="h-24 w-24 rounded-md bg-highlight-100/60" />
+        <div className="flex h-24 w-full flex-1 flex-col space-y-3 py-1">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2 h-2 rounded bg-highlight-100/60" />
+            <div className="col-span-1 h-2 rounded bg-highlight-100/60" />
+          </div>
+          <div className="h-2 rounded bg-highlight-100/60" />
+          <div className="flex-1" />
+          <div className="grid grid-cols-4 gap-4">
+            <div className="col-span-1 h-2 rounded bg-highlight-100/60" />
+            <div className="col-span-2" />
+            <div className="col-span-1 h-2 rounded bg-highlight-100/60" />
+          </div>
         </div>
       </div>
-    </div>
-  </li>
-);
+    </li>
+  );
 
 // Cart Drawer Items Component
 const CartDrawerItems: FC<{
@@ -60,7 +62,7 @@ const CartDrawerItems: FC<{
   isRemovingItemId?: string;
   currencyCode: string;
 }> = ({ items, isRemovingItemId, currencyCode }) => (
-  <ul className="-my-6 divide-y divide-gray-200 list-none">
+  <ul className="-my-6 divide-y divide-primary-900/40 list-none">
     {items.map((item) => (
       <CartDrawerItem key={item.id} isRemoving={isRemovingItemId === item.id} item={item} currencyCode={currencyCode} />
     ))}
@@ -104,8 +106,8 @@ const CartDrawerFooter: FC<{
   onCheckout: () => void;
   onClose: () => void;
 }> = ({ cart, currencyCode, itemCount, navigatingToCheckout, onCheckout, onClose }) => (
-  <div className="border-t border-gray-200 px-4 py-6 sm:px-6">
-    <div className="flex justify-between text-base font-bold text-gray-900">
+  <div className="border-t border-primary-900/40 px-4 py-6 sm:px-6">
+    <div className="flex justify-between text-base font-bold text-primary-50">
       <p>Subtotal</p>
       <p>
         {cart
@@ -115,7 +117,7 @@ const CartDrawerFooter: FC<{
             })}
       </p>
     </div>
-    <p className="mt-0.5 text-sm text-gray-500">Shipping and taxes calculated at checkout.</p>
+    <p className="mt-0.5 text-sm text-primary-200">Shipping and taxes calculated at checkout.</p>
     <div className="mt-6">
       <Button
         variant="primary"
@@ -126,7 +128,7 @@ const CartDrawerFooter: FC<{
         {navigatingToCheckout ? 'Preparing checkout...' : 'Checkout'}
       </Button>
     </div>
-    <div className="mt-4 flex justify-center text-center text-sm text-gray-500">
+    <div className="mt-4 flex justify-center text-center text-sm text-primary-200">
       <p>
         or{' '}
         <ButtonLink size="sm" onClick={onClose}>
@@ -209,10 +211,10 @@ export const CartDrawer: FC = () => {
   return (
     <Dialog open={isOpen} onClose={handleClose} className="relative z-50">
       {/* Backdrop with transition */}
-      <DialogBackdrop
-        transition
-        className="fixed inset-0 bg-gray-300 bg-opacity-50 backdrop-blur-sm duration-300 ease-out data-[closed]:opacity-0"
-      />
+    <DialogBackdrop
+      transition
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm duration-300 ease-out data-[closed]:opacity-0"
+    />
 
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
@@ -222,7 +224,7 @@ export const CartDrawer: FC = () => {
               transition
               className="pointer-events-auto w-screen max-w-md transform duration-500 ease-in-out data-[closed]:translate-x-full"
             >
-              <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
+              <div className="flex h-full flex-col overflow-y-scroll bg-highlight-50 shadow-[0_25px_60px_rgba(2,12,20,0.55)]">
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
                   <CartDrawerHeader itemCount={lineItemsTotal} onClose={handleClose} />

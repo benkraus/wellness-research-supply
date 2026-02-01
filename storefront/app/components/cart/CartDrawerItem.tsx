@@ -40,7 +40,7 @@ export const CartDrawerItem: FC<CartDrawerItemProps> = ({ item, currencyCode, is
         '!h-0 !p-0 !opacity-0': isRemoving,
       })}
     >
-      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-primary-900/40">
         <Image
           src={item.variant?.product?.thumbnail || ''}
           alt={item.product_title || 'product thumbnail'}
@@ -48,24 +48,24 @@ export const CartDrawerItem: FC<CartDrawerItemProps> = ({ item, currencyCode, is
         />
       </div>
 
-      <div className="ml-4 flex flex-1 flex-col">
-        <div>
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-base font-bold text-gray-900">{item.product_title}</h3>
-              <p className="mt-0.5 text-sm text-gray-500">{item.variant_title}</p>
-            </div>
-            <Button variant="link" onClick={handleRemoveFromCart} disabled={isRemoving} className="text-sm">
+        <div className="ml-4 flex flex-1 flex-col">
+          <div>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-bold text-primary-50">{item.product_title}</h3>
+                <p className="mt-0.5 text-sm text-primary-200">{item.variant_title}</p>
+              </div>
+            <Button variant="link" onClick={handleRemoveFromCart} disabled={isRemoving} className="text-sm text-primary-200">
               {isRemoving ? 'Removing' : 'Remove'}
             </Button>
           </div>
         </div>
         <div className="flex-1" />
         <div className="flex items-center justify-between">
-          <p className="text-sm  text-gray-500">Qty {item.quantity}</p>
+          <p className="text-sm text-primary-200">Qty {item.quantity}</p>
 
           <div className="flex">
-            <p className="ml-4">{formatLineItemPrice(item, currencyCode)}</p>
+            <p className="ml-4 text-primary-50">{formatLineItemPrice(item, currencyCode)}</p>
           </div>
         </div>
       </div>

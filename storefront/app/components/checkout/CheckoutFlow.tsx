@@ -26,10 +26,9 @@ export const CheckoutFlow: FC = () => {
         )}
 
         <CheckoutAccountDetails />
+        <CheckoutDeliveryMethod showHeader={false} />
 
         <hr className="my-10" />
-
-        <CheckoutDeliveryMethod />
 
         <CheckoutPayment />
       </div>
