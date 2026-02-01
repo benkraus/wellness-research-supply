@@ -263,11 +263,6 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 		return {
 			calculated_amount: calculatedPrice,
 			is_calculated_price_tax_inclusive: !!rate?.tax_amount,
-			metadata: {
-				delivery_days: rate?.delivery_days,
-				delivery_date: rate?.delivery_date,
-				carrier_delivery_days: rate?.carrier_delivery_days,
-			},
 		};
 	}
 

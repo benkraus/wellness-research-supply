@@ -6,6 +6,7 @@ import { getPosthog } from '@app/lib/posthog';
 import { CheckoutProvider } from '@app/providers/checkout-provider';
 import ShoppingCartIcon from '@heroicons/react/24/outline/ShoppingCartIcon';
 import { sdk } from '@libs/util/server/client.server';
+import { getMedusaBaseUrl, getPublishableKey } from '@libs/util/server/client.server';
 import { getCartId, removeCartId } from '@libs/util/server/cookies.server';
 import { initiatePaymentSession, retrieveCart, setShippingMethod } from '@libs/util/server/data/cart.server';
 import { getCustomer } from '@libs/util/server/data/customer.server';
@@ -144,23 +145,54 @@ export const loader = async ({
     await ensureCartPaymentSessions(request, cart),
   ]);
 
-  console.info(
-    '[Checkout] shipping options timeline',
-    shippingOptions.map((option) => ({
-      id: option.id,
-      name: option.name,
-      price_type: option.price_type,
-      amount: option.amount,
-      calculated_amount: option.calculated_price?.calculated_amount,
-      metadata: (option.calculated_price as Record<string, unknown> | undefined)?.metadata,
-    })),
-  );
+  let shippingOptionsWithTimeline = shippingOptions;
+
+  if (shippingOptions.length > 0 && hasPhone && hasAddress) {
+    const publishableKey = await getPublishableKey();
+    const baseUrl = getMedusaBaseUrl();
+    const timelineUrl = new URL('/store/shipping-options/timeline', baseUrl);
+
+    const timelineResponse = await fetch(timelineUrl.toString(), {
+      method: 'POST',
+      headers: {
+        ...(publishableKey ? { 'x-publishable-api-key': publishableKey } : {}),
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        cart_id: cartId,
+        options: shippingOptions.map((option) => ({
+          id: option.id,
+          data: option.data,
+        })),
+      }),
+    });
+
+    if (timelineResponse.ok) {
+      const payload = (await timelineResponse.json()) as {
+        timelines?: Record<string, { carrier_delivery_days?: string; delivery_days?: number; delivery_date?: string } | null>;
+      };
+      const timelines = payload?.timelines ?? {};
+      shippingOptionsWithTimeline = shippingOptions.map((option) => {
+        const timeline = timelines[option.id];
+        if (!timeline) return option;
+        const data = (option.data && typeof option.data === 'object') ? option.data : {};
+        return {
+          ...option,
+          data: {
+            ...data,
+            delivery_timeline: timeline,
+          },
+        };
+      });
+    }
+  }
 
   const updatedCart = await retrieveCart(request);
 
   return {
     cart: updatedCart,
-    shippingOptions,
+    shippingOptions: shippingOptionsWithTimeline,
     paymentProviders,
     activePaymentSession,
   };

@@ -9,26 +9,20 @@ export const getShippingOptionAmount = (shippingOption: StoreCartShippingOption)
   return shippingOption.amount ?? 0;
 };
 
-const getCalculatedPriceMetadata = (shippingOption: StoreCartShippingOption) => {
-  const calculatedPrice = shippingOption.calculated_price;
-  if (!calculatedPrice || typeof calculatedPrice !== 'object') return undefined;
-
-  const metadata = (calculatedPrice as Record<string, unknown>).metadata;
-  if (!metadata || typeof metadata !== 'object') return undefined;
-
-  return metadata as Record<string, unknown>;
-};
-
 export const getShippingOptionTimeline = (shippingOption: StoreCartShippingOption) => {
-  const metadata = getCalculatedPriceMetadata(shippingOption);
-  if (!metadata) return null;
+  const data = (shippingOption.data && typeof shippingOption.data === 'object') ? shippingOption.data : null;
+  const timeline = data ? (data as Record<string, unknown>).delivery_timeline : null;
+  const timelineObj = timeline && typeof timeline === 'object' ? (timeline as Record<string, unknown>) : null;
+  const direct = typeof timeline === 'string' ? timeline.trim() : '';
 
-  const carrierDeliveryDays = metadata.carrier_delivery_days;
+  if (direct) return direct;
+
+  const carrierDeliveryDays = timelineObj?.carrier_delivery_days;
   if (typeof carrierDeliveryDays === 'string' && carrierDeliveryDays.trim()) {
     return carrierDeliveryDays.trim();
   }
 
-  const deliveryDays = metadata.delivery_days;
+  const deliveryDays = timelineObj?.delivery_days;
   if (typeof deliveryDays === 'number' && !Number.isNaN(deliveryDays)) {
     return `${deliveryDays}`;
   }
