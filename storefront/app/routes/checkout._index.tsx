@@ -2,19 +2,19 @@ import { CheckoutFlow } from '@app/components/checkout/CheckoutFlow';
 import { CheckoutSidebar } from '@app/components/checkout/CheckoutSidebar';
 import { Empty } from '@app/components/common/Empty/Empty';
 import { Button } from '@app/components/common/buttons/Button';
-import { CheckoutProvider } from '@app/providers/checkout-provider';
 import { getPosthog } from '@app/lib/posthog';
+import { CheckoutProvider } from '@app/providers/checkout-provider';
 import ShoppingCartIcon from '@heroicons/react/24/outline/ShoppingCartIcon';
 import { sdk } from '@libs/util/server/client.server';
 import { getCartId, removeCartId } from '@libs/util/server/cookies.server';
 import { initiatePaymentSession, retrieveCart, setShippingMethod } from '@libs/util/server/data/cart.server';
 import { getCustomer } from '@libs/util/server/data/customer.server';
 import { listCartPaymentProviders } from '@libs/util/server/data/payment.server';
-import { CartDTO, StoreCart, StoreCartShippingOption, StorePaymentProvider } from '@medusajs/types';
-import { BasePaymentSession } from '@medusajs/types/dist/http/payment/common';
+import { normalizePhoneNumber } from '@libs/util/phoneNumber';
+import type { StoreCart, StoreCartShippingOption, StorePaymentProvider } from '@medusajs/types';
+import type { BasePaymentSession } from '@medusajs/types/dist/http/payment/common';
 import { useEffect, useRef } from 'react';
-import { LoaderFunctionArgs, redirect } from 'react-router';
-import { Link, useLoaderData } from 'react-router';
+import { Link, redirect, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 
 const SYSTEM_PROVIDER_ID = 'pp_system_default';
 
@@ -52,13 +52,14 @@ const ensureSelectedCartShippingMethod = async (request: Request, cart: StoreCar
   }
 };
 
-const ensureCartPaymentSessions = async (request: Request, cart: StoreCart) => {
+const ensureCartPaymentSessions = async (request: Request, cart: StoreCart): Promise<BasePaymentSession | null> => {
   if (!cart) throw new Error('Cart was not provided.');
 
   let activeSession = cart.payment_collection?.payment_sessions?.find((session) => session.status === 'pending');
 
   if (!activeSession) {
-    const paymentProviders = await listCartPaymentProviders(cart.region_id!);
+    if (!cart.region_id) return activeSession ?? null;
+    const paymentProviders = await listCartPaymentProviders(cart.region_id);
     if (!paymentProviders.length) return activeSession;
 
     const nonStripeProviders = paymentProviders.filter((p) => !p.id.includes('stripe'));
@@ -76,7 +77,7 @@ const ensureCartPaymentSessions = async (request: Request, cart: StoreCart) => {
     activeSession = payment_collection.payment_sessions?.find((session) => session.status === 'pending');
   }
 
-  return activeSession as BasePaymentSession;
+  return activeSession ?? null;
 };
 
 export const loader = async ({
@@ -90,6 +91,11 @@ export const loader = async ({
   const cartId = await getCartId(request.headers);
 
   const customer = await getCustomer(request);
+  if (!customer) {
+    const redirectTo = new URL(request.url);
+    const returnTo = `${redirectTo.pathname}${redirectTo.search}`;
+    throw redirect(`/account?returnTo=${encodeURIComponent(returnTo)}`);
+  }
   if (customer?.metadata?.email_verified === false) {
     const params = new URLSearchParams({
       email: customer.email,
@@ -107,7 +113,7 @@ export const loader = async ({
     };
   }
 
-  const cart = await retrieveCart(request).catch((e) => null);
+  const cart = await retrieveCart(request).catch(() => null);
 
   if (!cart) {
     throw redirect('/');
@@ -120,25 +126,43 @@ export const loader = async ({
     throw redirect(`/`, { headers });
   }
 
-  const hasPhone = !!cart.shipping_address?.phone;
+  const shippingAddress = cart.shipping_address;
+  const shippingPhone = shippingAddress?.phone ?? '';
+  const hasPhone = !!normalizePhoneNumber(shippingPhone);
+  const hasAddress = !!shippingAddress?.address_1 && !!shippingAddress?.city;
 
-  if (hasPhone) {
+  if (hasPhone && hasAddress) {
     await ensureSelectedCartShippingMethod(request, cart);
   }
 
+  const regionId = cart.region_id;
   const [shippingOptions, paymentProviders, activePaymentSession] = await Promise.all([
-    hasPhone ? fetchShippingOptions(cartId) : Promise.resolve([] as StoreCartShippingOption[]),
-    (await listCartPaymentProviders(cart.region_id!)) as StorePaymentProvider[],
+    hasPhone && hasAddress ? fetchShippingOptions(cartId) : Promise.resolve([] as StoreCartShippingOption[]),
+    regionId
+      ? ((await listCartPaymentProviders(regionId)) as StorePaymentProvider[])
+      : Promise.resolve([] as StorePaymentProvider[]),
     await ensureCartPaymentSessions(request, cart),
   ]);
+
+  console.info(
+    '[Checkout] shipping options timeline',
+    shippingOptions.map((option) => ({
+      id: option.id,
+      name: option.name,
+      price_type: option.price_type,
+      amount: option.amount,
+      calculated_amount: option.calculated_price?.calculated_amount,
+      metadata: (option.calculated_price as Record<string, unknown> | undefined)?.metadata,
+    })),
+  );
 
   const updatedCart = await retrieveCart(request);
 
   return {
     cart: updatedCart,
     shippingOptions,
-    paymentProviders: paymentProviders,
-    activePaymentSession: activePaymentSession as BasePaymentSession,
+    paymentProviders,
+    activePaymentSession,
   };
 };
 
@@ -187,7 +211,7 @@ export default function CheckoutIndexRoute() {
         paymentProviders: paymentProviders,
       }}
     >
-      <section>
+      <section className="checkout-page">
         <div className="mx-auto max-w-2xl px-4 pb-8 pt-6 sm:px-6 sm:pb-16 sm:pt-8 lg:max-w-7xl lg:px-8 lg:pb-24 lg:pt-16">
           <div className="lg:grid lg:grid-cols-[4fr_3fr] lg:gap-x-12 xl:gap-x-16">
             <CheckoutFlow />

@@ -1,6 +1,6 @@
-import { FC, HTMLAttributes, PropsWithChildren } from 'react';
-import { NavLink } from 'react-router';
-import { NavLinkProps } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
+import type { NavLinkProps } from 'react-router';
+import type { FC, HTMLAttributes, PropsWithChildren } from 'react';
 
 export interface AwareNavLinkProps {
   url: string;
@@ -13,6 +13,8 @@ export interface AwareNavLinkProps {
 export const URLAwareNavLink: FC<
   PropsWithChildren<AwareNavLinkProps & Omit<HTMLAttributes<HTMLAnchorElement>, 'className'>>
 > = ({ url, newTab, prefetch = 'intent', preventScrollReset, className, children, ...rest }) => {
+  const location = useLocation();
+  const disableViewTransition = location.pathname.startsWith('/checkout');
   const isExternal = url.startsWith('http') || url.startsWith('mailto') || url.startsWith('tel');
   const target = newTab ? '_blank' : '_self';
   const rel = newTab ? 'noopener noreferrer' : undefined;
@@ -32,7 +34,7 @@ export const URLAwareNavLink: FC<
 
   return (
     <NavLink
-      viewTransition
+      viewTransition={!disableViewTransition}
       className={className}
       to={url}
       prefetch={prefetch}

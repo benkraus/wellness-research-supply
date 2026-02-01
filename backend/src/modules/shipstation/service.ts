@@ -124,6 +124,13 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 			);
 		}
 
+		if (!from_address.address.phone?.trim()) {
+			throw new MedusaError(
+				MedusaError.Types.INVALID_DATA,
+				"from_location.address.phone is required to calculate shipping rate",
+			);
+		}
+
 		const ship_from: ShipStationAddress = {
 			name: from_address?.name || "",
 			phone: from_address?.address?.phone || "",
@@ -139,6 +146,13 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 			throw new MedusaError(
 				MedusaError.Types.INVALID_DATA,
 				"shipping_address is required to calculate shipping rate",
+			);
+		}
+
+		if (!to_address.phone?.trim()) {
+			throw new MedusaError(
+				MedusaError.Types.INVALID_DATA,
+				"shipping_address.phone is required to calculate shipping rate",
 			);
 		}
 
@@ -237,9 +251,23 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 				rate.other_amount.amount +
 				(rate.tax_amount?.amount || 0);
 
+		if (rate) {
+			console.info("[ShipStation] rate timeline", {
+				rate_id: rate.rate_id,
+				carrier_delivery_days: rate.carrier_delivery_days,
+				delivery_days: rate.delivery_days,
+				delivery_date: rate.delivery_date,
+			});
+		}
+
 		return {
 			calculated_amount: calculatedPrice,
 			is_calculated_price_tax_inclusive: !!rate?.tax_amount,
+			metadata: {
+				delivery_days: rate?.delivery_days,
+				delivery_date: rate?.delivery_date,
+				carrier_delivery_days: rate?.carrier_delivery_days,
+			},
 		};
 	}
 

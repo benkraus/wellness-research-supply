@@ -58,6 +58,9 @@ export type Rate = {
     currency: string
     amount: number
   }
+  delivery_days?: number
+  delivery_date?: string
+  carrier_delivery_days?: string
 }
 
 export type RateResponse = {

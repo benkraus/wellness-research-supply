@@ -1,5 +1,5 @@
 import { StoreCartShippingOption } from '@medusajs/types';
-import { getShippingOptionsByProfile } from '../checkout';
+import { getShippingOptionAmount, getShippingOptionsByProfile } from '../checkout';
 
 export function calculateEstimatedShipping(shippingOptions: StoreCartShippingOption[]): number {
   if (shippingOptions?.length < 1) return 0;
@@ -8,9 +8,9 @@ export function calculateEstimatedShipping(shippingOptions: StoreCartShippingOpt
 
   return Object.values(shippingOptionsByProfile).reduce((acc, shippingOptions) => {
     const cheapestOption = shippingOptions.reduce((prev, curr) =>
-      (prev.amount || 0) < (curr?.amount || 0) ? prev : curr,
+      getShippingOptionAmount(prev) < getShippingOptionAmount(curr) ? prev : curr,
     );
 
-    return acc + (cheapestOption.amount || 0);
+    return acc + getShippingOptionAmount(cheapestOption);
   }, 0);
 }

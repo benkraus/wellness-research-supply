@@ -14,7 +14,7 @@ export const ManualPayment: FC<ManualPaymentProps> = ({ providerId, ...props }) 
     className="mt-4"
     {...props}
   >
-    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900">
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-100">
       <p className="text-sm font-semibold">Card payments are not accepted.</p>
       <p className="mt-1 text-sm">
         After you place your order, we’ll email payment instructions from orders@wellnessresearchsupply.com.

@@ -188,6 +188,13 @@ export default function AccountRoute() {
 	const [venmoUseProfile, setVenmoUseProfile] = useState(venmoDefaultUseProfile);
 	const [venmoCustomContact, setVenmoCustomContact] = useState(venmoDefaultContact);
 	const venmoProfileContact = customer?.email || customer?.phone || "";
+	const returnTo = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		const candidate = params.get("returnTo");
+		if (!candidate) return null;
+		if (!candidate.startsWith("/")) return null;
+		return candidate;
+	}, [location.search]);
 
 	const edebitMethodsFromCustomer = useMemo(() => {
 		const methods = metadata.edebit_payment_methods;
@@ -282,6 +289,12 @@ export default function AccountRoute() {
 		registerFetcher.data?.success,
 		registerFetcher.data?.warning,
 	]);
+
+	useEffect(() => {
+		if (!loginFetcher.data?.success) return;
+		if (!returnTo) return;
+		navigate(returnTo);
+	}, [loginFetcher.data?.success, navigate, returnTo]);
 
 	useEffect(() => {
 		if (emailFetcher.data?.success && emailFetcher.data?.email) {

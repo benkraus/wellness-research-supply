@@ -15,7 +15,7 @@ export const VenmoPayment: FC<VenmoPaymentProps> = ({ providerId, ...props }) =>
     className="mt-4"
     {...props}
   >
-    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-900">
+    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-100">
       <p className="text-sm font-semibold">Pay with Venmo</p>
       <p className="mt-1 text-sm">
         Enter the phone number, email, or username tied to your Venmo account. We’ll send a payment request.

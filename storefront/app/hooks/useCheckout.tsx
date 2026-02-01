@@ -19,7 +19,10 @@ export const useCheckout = () => {
   return {
     ...state,
     ...actions(context),
-    goToNextStep: () => context.dispatch({ name: 'setStep', payload: nextStep }),
+    goToNextStep: () => {
+      if (nextStep === state.step) return;
+      context.dispatch({ name: 'setStep', payload: nextStep });
+    },
     isCartMutating: cartMutationFetchers.some((f) => ['loading', 'submitting'].includes(f.state)),
   };
 };

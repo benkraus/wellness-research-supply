@@ -13,8 +13,8 @@ import {
   getShippingOptionsByProfile,
 } from '@libs/util/checkout';
 import { formatPrice } from '@libs/util/prices';
-import { StoreCart, StoreCartShippingOption } from '@medusajs/types';
-import { BaseCartShippingMethod } from '@medusajs/types/dist/http/cart/common';
+import type { StoreCart, StoreCartShippingOption } from '@medusajs/types';
+import type { BaseCartShippingMethod } from '@medusajs/types/dist/http/cart/common';
 import { FC, Fragment, useEffect, useMemo } from 'react';
 import { useFetcher } from 'react-router';
 import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
@@ -40,22 +40,43 @@ const getDefaultValues = (cart: StoreCart, shippingOptionsByProfile: { [key: str
     shippingOptionIds: getShippingOptionsDefaultValues(cart, shippingOptionsByProfile),
   }) as ChooseCheckoutShippingMethodsFormData;
 
+const areArraysEqual = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
 export const CheckoutDeliveryMethod: FC = () => {
-  const fetcher = useFetcher<{ errors?: any; cart?: StoreCart }>();
+  const fetcher = useFetcher<{ errors?: unknown; cart?: StoreCart }>();
   const { step, shippingOptions, setStep, goToNextStep, cart, isCartMutating } = useCheckout();
   const isActiveStep = step === CheckoutStep.PAYMENT;
   const isSubmitting = ['submitting', 'loading'].includes(fetcher.state);
-  if (!cart) return null;
 
   const hasErrors = !!fetcher.data?.errors;
-  const hasCompletedAccountDetails = checkAccountDetailsComplete(cart);
+  const hasCompletedAccountDetails = cart ? checkAccountDetailsComplete(cart) : false;
   const shippingOptionsByProfile = useMemo(() => getShippingOptionsByProfile(shippingOptions), [shippingOptions]);
-  const isComplete = useMemo(() => checkDeliveryMethodComplete(cart, shippingOptions), [cart, shippingOptions]);
-
-  const defaultValues: ChooseCheckoutShippingMethodsFormData = useMemo(
-    () => getDefaultValues(cart, shippingOptionsByProfile),
-    [cart, shippingOptionsByProfile],
+  const isComplete = useMemo(
+    () => (cart ? checkDeliveryMethodComplete(cart, shippingOptions) : false),
+    [cart, shippingOptions],
   );
+  const selectedShippingAmounts = useMemo(() => {
+    if (!cart?.shipping_methods?.length) return {};
+
+    return cart.shipping_methods.reduce<Record<string, number>>((acc, method) => {
+      if (method.shipping_option_id && typeof method.amount === 'number') {
+        acc[method.shipping_option_id] = method.amount;
+      }
+      return acc;
+    }, {});
+  }, [cart?.shipping_methods]);
+
+  const defaultValues: ChooseCheckoutShippingMethodsFormData = useMemo(() => {
+    if (!cart) {
+      return {
+        cartId: '',
+        shippingOptionIds: [],
+      } as ChooseCheckoutShippingMethodsFormData;
+    }
+
+    return getDefaultValues(cart, shippingOptionsByProfile);
+  }, [cart, shippingOptionsByProfile]);
 
   const form = useRemixForm({
     resolver: zodResolver(shippingMethodsSchema),
@@ -70,14 +91,24 @@ export const CheckoutDeliveryMethod: FC = () => {
   const values = form.watch('shippingOptionIds');
 
   useEffect(() => {
-    form.setValue('shippingOptionIds', cart.shipping_methods?.map((sm) => sm.shipping_option_id!) ?? []);
-  }, [cart.shipping_methods]);
+    const methodIds = cart?.shipping_methods
+      ?.map((method) => method.shipping_option_id)
+      .filter((id): id is string => Boolean(id));
+
+    if (!methodIds?.length) return;
+    const currentValues = (values ?? []) as string[];
+    if (areArraysEqual(currentValues, methodIds)) return;
+
+    form.setValue('shippingOptionIds', methodIds);
+  }, [cart?.shipping_methods, form, values]);
 
   useEffect(() => {
     if (isActiveStep && !isSubmitting && !hasErrors && isComplete) goToNextStep();
-  }, [isSubmitting, isComplete]);
+  }, [goToNextStep, hasErrors, isActiveStep, isComplete, isSubmitting]);
 
   const showCompleted = !isActiveStep && hasCompletedAccountDetails;
+
+  if (!cart?.region) return null;
 
   return (
     <div className="checkout-delivery-method">
@@ -124,7 +155,7 @@ export const CheckoutDeliveryMethod: FC = () => {
                     {shippingOptionProfileIndex > 0 && <hr className="my-6" />}
 
                     {!!cart?.shipping_methods?.length && (
-                      <Alert type="info" className="my-6">
+                      <Alert type="info" tone="dark" className="my-6">
                         Choose your delivery option
                       </Alert>
                     )}
@@ -132,8 +163,9 @@ export const CheckoutDeliveryMethod: FC = () => {
                       disabled={isCartMutating}
                       name={`shippingOptionIds.${shippingOptionProfileIndex}`}
                       shippingOptions={shippingOptions}
-                      region={cart.region!}
+                      region={cart.region}
                       value={values?.[shippingOptionProfileIndex] ?? null}
+                      selectedAmounts={selectedShippingAmounts}
                       onValueChange={(value) => form.setValue(`shippingOptionIds.${shippingOptionProfileIndex}`, value)}
                     />
                   </Fragment>

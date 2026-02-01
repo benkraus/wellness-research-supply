@@ -7,6 +7,7 @@ import {
 } from '@libs/util/server/data/cart.server';
 import { listCartPaymentProviders } from '@libs/util/server/data/payment.server';
 import { listCartShippingOptions } from '@libs/util/server/data/fulfillment.server';
+import { normalizePhoneNumber } from '@libs/util/phoneNumber';
 import type { StoreCart } from '@medusajs/types';
 import type { ActionFunctionArgs } from 'react-router';
 import { data as remixData } from 'react-router';
@@ -28,6 +29,18 @@ export async function action(actionArgs: ActionFunctionArgs) {
 
   if (errors) {
     return remixData({ errors }, { status: 400 });
+  }
+
+  const cart = (await retrieveCart(actionArgs.request)) as StoreCart;
+  const shippingAddress = cart?.shipping_address;
+  const hasShippingPhone = !!normalizePhoneNumber(shippingAddress?.phone ?? '');
+  const hasShippingAddress = !!shippingAddress?.address_1 && !!shippingAddress?.city;
+
+  if (!hasShippingAddress || !hasShippingPhone) {
+    return remixData(
+      { errors: { root: { message: 'Shipping address and phone are required before selecting delivery.' } } },
+      { status: 400 },
+    );
   }
 
   const shippingOptions = await listCartShippingOptions(data.cartId);
@@ -53,8 +66,22 @@ export async function action(actionArgs: ActionFunctionArgs) {
 
   // Force payment sessions to be updated
   const updatedCart = (await updateCart(actionArgs.request, {})).cart;
+  const updatedAddress = updatedCart.shipping_address;
+  const hasUpdatedShippingPhone = !!normalizePhoneNumber(updatedAddress?.phone ?? '');
+  const hasUpdatedShippingAddress = !!updatedAddress?.address_1 && !!updatedAddress?.city;
 
-  const paymentProviders = await listCartPaymentProviders(updatedCart.region_id!);
+  if (!hasUpdatedShippingAddress || !hasUpdatedShippingPhone) {
+    return remixData(
+      { errors: { root: { message: 'Shipping address and phone are required before selecting delivery.' } } },
+      { status: 400 },
+    );
+  }
+
+  if (!updatedCart.region_id) {
+    return remixData({ errors: { root: { message: 'Cart region is required for payment methods.' } } }, { status: 400 });
+  }
+
+  const paymentProviders = await listCartPaymentProviders(updatedCart.region_id);
   const provider =
     paymentProviders.find((p) => p.id.includes('venmo')) ??
     paymentProviders.find((p) => p.id === 'pp_system_default') ??
@@ -67,7 +94,7 @@ export async function action(actionArgs: ActionFunctionArgs) {
     });
   }
 
-  const cart = (await retrieveCart(actionArgs.request)) as StoreCart;
+  const refreshedCart = (await retrieveCart(actionArgs.request)) as StoreCart;
 
-  return remixData({ cart });
+  return remixData({ cart: refreshedCart });
 }

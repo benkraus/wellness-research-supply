@@ -153,7 +153,7 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
 
   if (!activePaymentSession) {
     return (
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900">
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-100">
         <p className="text-sm font-semibold">Payment session unavailable</p>
         <p className="mt-1 text-sm">
           We couldn’t start your payment session. Please refresh the page or contact

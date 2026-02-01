@@ -90,7 +90,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
       className="mt-4"
       {...props}
     >
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-800">
+      <div className="rounded-xl border border-primary-900/40 bg-highlight-100/80 p-4 text-primary-100">
         <p className="text-sm font-semibold">Pay with eDebit (ACH)</p>
         <p className="mt-1 text-sm">
           Enter the bank account details for the checking account you want to use. Your payment will
@@ -100,7 +100,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
 
       {savedMethods.length > 0 && (
         <div className="mt-4">
-          <label className="text-[16px] text-gray-600" htmlFor="edebitSavedMethodId">
+          <label className="text-[16px] text-primary-200" htmlFor="edebitSavedMethodId">
             Saved bank accounts
           </label>
           {(() => {
@@ -108,7 +108,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
             return (
               <select
               id="edebitSavedMethodId"
-              className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-sm shadow-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-primary-900/40 bg-highlight-100 px-3 text-sm text-primary-50 shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/40"
               {...field}
               onChange={(event) => {
                 field.onChange(event);
@@ -136,7 +136,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
       )}
 
       {isUsingSaved && selectedSaved && (
-        <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-900">
+        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-100">
           <p className="text-sm font-semibold">Using saved account</p>
           <p className="mt-1 text-sm">
             {selectedSaved.label || selectedSaved.bank_name}{" "}

@@ -11,8 +11,10 @@ import type { MedusaAddress } from '@libs/types';
 import { medusaAddressToAddress } from '@libs/util';
 import { checkAccountDetailsComplete } from '@libs/util/checkout';
 import { FetcherKeys } from '@libs/util/fetcher-keys';
-import { useEffect, useMemo } from 'react';
-import { FieldErrors } from 'react-hook-form';
+import { formatPhoneNumberInput } from '@libs/util/phoneNumber';
+import clsx from 'clsx';
+import { useCallback, useEffect, useMemo } from 'react';
+import type { FieldErrors } from 'react-hook-form';
 import { useFetcher } from 'react-router';
 import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
 import { SubmitButton } from '../common/remix-hook-form/buttons/SubmitButton';
@@ -24,24 +26,32 @@ import { selectInitialShippingAddress } from './checkout-form-helpers';
 
 const NEW_SHIPPING_ADDRESS_ID = 'new';
 
-export const CheckoutAccountDetails = () => {
+interface CheckoutAccountDetailsContentProps {
+  cart: NonNullable<ReturnType<typeof useCheckout>['cart']>;
+  customerData: ReturnType<typeof useCustomer>['customer'];
+  step: ReturnType<typeof useCheckout>['step'];
+  setStep: ReturnType<typeof useCheckout>['setStep'];
+  goToNextStep: ReturnType<typeof useCheckout>['goToNextStep'];
+  isCartMutating: ReturnType<typeof useCheckout>['isCartMutating'];
+}
+
+const CheckoutAccountDetailsContent = ({
+  cart,
+  customerData,
+  step,
+  setStep,
+  goToNextStep,
+  isCartMutating,
+}: CheckoutAccountDetailsContentProps) => {
   const checkoutAccountDetailsFormFetcher = useFetcher<{
     errors: FieldErrors;
   }>({ key: FetcherKeys.cart.accountDetails });
-  const { customer } = useCustomer();
-  const { step, setStep, goToNextStep, cart, isCartMutating } = useCheckout();
   const isActiveStep = step === CheckoutStep.ACCOUNT_DETAILS;
 
-  if (!cart) return null;
-
-  const initialShippingAddress = selectInitialShippingAddress(cart, customer ?? undefined);
-
+  const initialShippingAddress = selectInitialShippingAddress(cart, customerData ?? undefined);
   const isComplete = checkAccountDetailsComplete(cart);
-
   const isSubmitting = ['submitting', 'loading'].includes(checkoutAccountDetailsFormFetcher.state);
-
   const hasErrors = !!checkoutAccountDetailsFormFetcher.data?.errors;
-
   const initialShippingAddressId = initialShippingAddress?.id ?? NEW_SHIPPING_ADDRESS_ID;
 
   const countryOptions =
@@ -51,9 +61,9 @@ export const CheckoutAccountDetails = () => {
     })) as { value: string; label: string }[]) ?? [];
 
   const addressOptions = useMemo(() => {
-    if (!customer?.addresses?.length) return [];
+    if (!customerData?.addresses?.length) return [];
 
-    return customer.addresses.map((address) => {
+    return customerData.addresses.map((address) => {
       const label = [
         address.address_1,
         address.city,
@@ -70,15 +80,23 @@ export const CheckoutAccountDetails = () => {
         address: medusaAddressToAddress(address as MedusaAddress),
       };
     });
-  }, [customer?.addresses]);
+  }, [customerData?.addresses]);
+
+  const withPhoneFallback = useCallback(
+    (address: ReturnType<typeof medusaAddressToAddress>) => ({
+      ...address,
+      phone: formatPhoneNumberInput(address.phone || customerData?.phone || ''),
+    }),
+    [customerData?.phone],
+  );
 
   const defaultValues = {
     cartId: cart.id,
-    email: customer?.email || cart.email || '',
-    customerId: customer?.id,
+    email: customerData?.email || cart.email || '',
+    customerId: customerData?.id,
     allowSuggestions: true,
     shippingAddress: {
-      ...medusaAddressToAddress(initialShippingAddress as MedusaAddress),
+      ...withPhoneFallback(medusaAddressToAddress(initialShippingAddress as MedusaAddress)),
     },
     shippingAddressId: initialShippingAddressId,
   };
@@ -95,23 +113,47 @@ export const CheckoutAccountDetails = () => {
 
   const shippingAddress = form.watch('shippingAddress');
   const shippingAddressId = form.watch('shippingAddressId');
+  const checkoutFieldClassName =
+    '[&_label]:text-primary-200 [&_input]:!bg-highlight-100 [&_input]:text-primary-50 [&_input]:border-primary-900/40 [&_input]:placeholder:text-primary-200/70 [&_input]:focus:border-primary-400 [&_input]:focus:ring-primary-400/40 [&_input:-webkit-autofill]:!shadow-[0_0_0_1000px_rgb(6_33_50)_inset] [&_input:-webkit-autofill]:!text-primary-50';
 
   useEffect(() => {
     if (isActiveStep && !isSubmitting && !hasErrors && isComplete) {
       form.reset();
       goToNextStep();
     }
-  }, [isSubmitting, isComplete]);
+  }, [isActiveStep, isSubmitting, hasErrors, isComplete, form, goToNextStep]);
 
   useEffect(() => {
     if (!addressOptions.length) return;
     if (!shippingAddressId || shippingAddressId === NEW_SHIPPING_ADDRESS_ID) return;
 
     const selected = addressOptions.find((option) => option.id === shippingAddressId);
-    if (selected) {
-      form.setValue('shippingAddress', selected.address);
+    if (!selected) {
+      if (form.formState.isDirty) return;
+
+      const fallbackOption =
+        addressOptions.find((option) => option.id === initialShippingAddressId) ?? addressOptions[0];
+
+      if (!fallbackOption) return;
+
+      form.setValue('shippingAddressId', fallbackOption.id);
+      form.setValue('shippingAddress', withPhoneFallback(fallbackOption.address));
+      return;
     }
-  }, [addressOptions, form, shippingAddressId]);
+
+    const isEmptyAddress = !Object.values(shippingAddress ?? {}).some((value) => value);
+    if (!isEmptyAddress) return;
+    if (form.formState.isDirty) return;
+
+    form.setValue('shippingAddress', withPhoneFallback(selected.address));
+  }, [
+    addressOptions,
+    form,
+    initialShippingAddressId,
+    shippingAddress,
+    shippingAddressId,
+    withPhoneFallback,
+  ]);
 
   const handleCancel = () => {
     goToNextStep();
@@ -131,7 +173,7 @@ export const CheckoutAccountDetails = () => {
 
       {isActiveStep && (
         <>
-          {customer?.email ? (
+          {customerData?.email ? (
             <p className="mt-2 text-sm mb-2">To get started, please enter your shipping address.</p>
           ) : (
             <p className="mt-2 text-sm mb-4">To get started, enter your email address.</p>
@@ -148,19 +190,19 @@ export const CheckoutAccountDetails = () => {
                 autoComplete="email"
                 placeholder="Email address"
                 label="Email Address"
-                className="[&_input]:!ring-0 mb-2"
+                className={clsx('[&_input]:!ring-0 mb-2', checkoutFieldClassName)}
               />
 
               <StyledTextField type="hidden" name="shippingAddressId" />
 
               {addressOptions.length > 0 && (
                 <div className="mt-4">
-                  <label className="text-[16px] text-gray-600" htmlFor="shippingAddressSelect">
+                  <label className="text-[16px] text-primary-200" htmlFor="shippingAddressSelect">
                     Saved addresses
                   </label>
                   <select
                     id="shippingAddressSelect"
-                    className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-sm shadow-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                    className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-primary-900/40 bg-highlight-100 px-3 text-sm text-primary-50 shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/40"
                     value={shippingAddressId || NEW_SHIPPING_ADDRESS_ID}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -184,7 +226,7 @@ export const CheckoutAccountDetails = () => {
 
                       const selected = addressOptions.find((option) => option.id === value);
                       if (selected) {
-                        form.setValue('shippingAddress', selected.address);
+                        form.setValue('shippingAddress', withPhoneFallback(selected.address));
                       }
                     }}
                   >
@@ -217,6 +259,24 @@ export const CheckoutAccountDetails = () => {
           </RemixFormProvider>
         </>
       )}
-    </div>
+     </div>
+   );
+};
+
+export const CheckoutAccountDetails = () => {
+  const { cart, step, setStep, goToNextStep, isCartMutating } = useCheckout();
+  const { customer: customerData } = useCustomer();
+
+  if (!cart) return null;
+
+  return (
+    <CheckoutAccountDetailsContent
+      cart={cart}
+      customerData={customerData}
+      step={step}
+      setStep={setStep}
+      goToNextStep={goToNextStep}
+      isCartMutating={isCartMutating}
+    />
   );
 };

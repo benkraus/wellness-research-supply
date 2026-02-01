@@ -12,13 +12,30 @@ export interface AddressFormFieldsProps {
 export const AddressFormFields = ({ prefix, countryOptions, className }: AddressFormFieldsProps) => {
   const { register } = useRemixFormContext();
   const { ref, ...countryField } = register(`${prefix}.countryCode` as const);
+  const checkoutFieldClassName =
+    '[&_label]:text-primary-200 [&_input]:!bg-highlight-100 [&_input]:text-primary-50 [&_input]:border-primary-900/40 [&_input]:placeholder:text-primary-200/70 [&_input]:focus:border-primary-400 [&_input]:focus:ring-primary-400/40 [&_input:-webkit-autofill]:!shadow-[0_0_0_1000px_rgb(6_33_50)_inset] [&_input:-webkit-autofill]:!text-primary-50';
 
   return (
     <div className={clsx('grid gap-4 sm:grid-cols-2', className)}>
-      <StyledTextField name={`${prefix}.firstName`} label="First name" placeholder="First name" />
-      <StyledTextField name={`${prefix}.lastName`} label="Last name" placeholder="Last name" />
+      <StyledTextField
+        name={`${prefix}.firstName`}
+        label="First name"
+        placeholder="First name"
+        className={checkoutFieldClassName}
+      />
+      <StyledTextField
+        name={`${prefix}.lastName`}
+        label="Last name"
+        placeholder="Last name"
+        className={checkoutFieldClassName}
+      />
 
-      <StyledTextField name={`${prefix}.company`} label="Company (optional)" placeholder="Company" />
+      <StyledTextField
+        name={`${prefix}.company`}
+        label="Company (optional)"
+        placeholder="Company"
+        className={checkoutFieldClassName}
+      />
       <StyledTextField
         name={`${prefix}.phone`}
         label="Phone"
@@ -28,35 +45,46 @@ export const AddressFormFields = ({ prefix, countryOptions, className }: Address
         inputMode="tel"
         autoComplete="tel"
         onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
+        className={checkoutFieldClassName}
       />
 
       <StyledTextField
         name={`${prefix}.address1`}
         label="Address"
         placeholder="Street address"
-        className="sm:col-span-2"
+        className={clsx('sm:col-span-2', checkoutFieldClassName)}
       />
       <StyledTextField
         name={`${prefix}.address2`}
         label="Apartment, suite, etc."
         placeholder="Apartment, suite, etc."
-        className="sm:col-span-2"
+        className={clsx('sm:col-span-2', checkoutFieldClassName)}
       />
 
-      <StyledTextField name={`${prefix}.city`} label="City" placeholder="City" />
-      <StyledTextField name={`${prefix}.province`} label="State / Province" placeholder="State / Province" />
+      <StyledTextField name={`${prefix}.city`} label="City" placeholder="City" className={checkoutFieldClassName} />
+      <StyledTextField
+        name={`${prefix}.province`}
+        label="State / Province"
+        placeholder="State / Province"
+        className={checkoutFieldClassName}
+      />
 
-      <StyledTextField name={`${prefix}.postalCode`} label="Postal code" placeholder="Postal code" />
+      <StyledTextField
+        name={`${prefix}.postalCode`}
+        label="Postal code"
+        placeholder="Postal code"
+        className={checkoutFieldClassName}
+      />
 
       <div className="flex flex-col gap-2">
-        <label className="text-[16px] text-gray-600" htmlFor={`${prefix}.countryCode`}>
+        <label className="text-[16px] text-primary-200" htmlFor={`${prefix}.countryCode`}>
           Country
         </label>
         <select
           id={`${prefix}.countryCode`}
           {...countryField}
           ref={ref}
-          className="focus:ring-primary-500 focus:border-primary-500 block h-12 w-full cursor-pointer rounded-md border border-gray-300 pl-3 pr-10 text-sm shadow-sm outline-none focus:ring-1"
+          className="focus:ring-primary-400/40 focus:border-primary-400 block h-12 w-full cursor-pointer rounded-md border border-primary-900/40 bg-highlight-100 pl-3 pr-10 text-sm text-primary-50 shadow-sm outline-none focus:ring-1"
         >
           <option value="">Select a country</option>
           {countryOptions.map((option) => (

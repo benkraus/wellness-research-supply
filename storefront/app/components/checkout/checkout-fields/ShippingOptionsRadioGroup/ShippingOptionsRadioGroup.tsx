@@ -13,6 +13,7 @@ export interface ShippingOptionsRadioGroupProps {
   value?: string | null;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
+  selectedAmounts?: Record<string, number>;
 }
 
 export const ShippingOptionsRadioGroup: FC<ShippingOptionsRadioGroupProps> = ({
@@ -22,6 +23,7 @@ export const ShippingOptionsRadioGroup: FC<ShippingOptionsRadioGroupProps> = ({
   value,
   onValueChange,
   disabled,
+  selectedAmounts,
 }) => {
   const form = useRemixFormContext();
   const isSubmitting = form.formState.isSubmitting;
@@ -38,7 +40,7 @@ export const ShippingOptionsRadioGroup: FC<ShippingOptionsRadioGroupProps> = ({
   };
 
   if (!shippingOptions.length) {
-    return <div>No shipping options available</div>;
+    return <div className="text-sm text-primary-200">No shipping options available</div>;
   }
 
   return (
@@ -50,7 +52,13 @@ export const ShippingOptionsRadioGroup: FC<ShippingOptionsRadioGroupProps> = ({
       disabled={isSubmitting || disabled}
     >
       {shippingOptions.map((shippingOption) => (
-        <ShippingOptionsRadioGroupOption key={shippingOption.id} shippingOption={shippingOption} region={region} />
+        <ShippingOptionsRadioGroupOption
+          key={shippingOption.id}
+          shippingOption={shippingOption}
+          region={region}
+          value={value}
+          selectedAmount={selectedAmounts?.[shippingOption.id]}
+        />
       ))}
     </RadioGroup>
   );

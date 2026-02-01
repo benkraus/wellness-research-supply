@@ -10,10 +10,11 @@ import { Bars3Icon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import ShoppingBagIcon from '@heroicons/react/24/outline/ShoppingBagIcon';
 import clsx from 'clsx';
 import { type FC, useState } from 'react';
+import { useLocation } from 'react-router';
 import { HeaderSideNav } from './HeaderSideNav';
 import { useActiveSection } from './useActiveSection';
 
-export type HeaderProps = {};
+export type HeaderProps = Record<string, never>;
 
 export const Header: FC<HeaderProps> = () => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
@@ -24,6 +25,11 @@ export const Header: FC<HeaderProps> = () => {
   const { activeSection } = useActiveSection(headerNavigationItems);
   const rootLoader = useRootLoaderData();
   const hasProducts = rootLoader?.hasPublishedProducts;
+  const location = useLocation();
+  const isCheckout = location.pathname.startsWith('/checkout');
+  const checkoutIconClassName = isCheckout
+    ? 'text-primary-50 border-primary-200/40 hover:!bg-primary-500/10 focus:!bg-primary-500/10 focus-within:!bg-primary-500/10'
+    : undefined;
 
   return (
     <header className="sticky top-0 z-40 mkt-header text-primary-50 bg-highlight-50/80 backdrop-blur border-b border-primary-900/10">
@@ -36,7 +42,7 @@ export const Header: FC<HeaderProps> = () => {
                   {!!cart && (
                     <IconButton
                       aria-label="open shopping cart"
-                      className="text-white sm:mr-0.5"
+                      className={clsx('text-white sm:mr-0.5', checkoutIconClassName)}
                       icon={(iconProps) => (
                         <div className="relative">
                           <ShoppingBagIcon
@@ -70,7 +76,7 @@ export const Header: FC<HeaderProps> = () => {
                   <div className="flex flex-wrap-reverse items-center gap-x-6 sm:justify-end">
                   {headerNavigationItems && (
                     <div className="hidden h-full gap-6 md:flex">
-                      {headerNavigationItems.slice(0, 6).map(({ id, new_tab, ...navItemProps }, index) => (
+                       {headerNavigationItems.slice(0, 6).map(({ id, new_tab, ...navItemProps }) => (
                         <URLAwareNavLink
                           key={id}
                           {...navItemProps}
@@ -105,19 +111,25 @@ export const Header: FC<HeaderProps> = () => {
                         Account
                       </URLAwareNavLink>
                     <div className="flex items-center gap-x-3 text-sm">
-                      <IconButton
-                        aria-label="search"
-                        className="text-white hidden sm:mr-0.5 sm:inline-flex focus-within:!bg-primary-50"
-                        icon={MagnifyingGlassIcon}
-                        onClick={() => toggleSearchDrawer(true)}
-                      />
-                      {!!cart && hasProducts && (
                         <IconButton
-                          aria-label="open shopping cart"
-                          className="text-white hidden sm:mr-0.5 sm:inline-flex focus-within:!bg-primary-50"
-                          icon={(iconProps) => (
-                            <div className="relative">
-                              <ShoppingBagIcon
+                          aria-label="search"
+                          className={clsx(
+                            'text-white hidden sm:mr-0.5 sm:inline-flex focus-within:!bg-primary-50',
+                            checkoutIconClassName,
+                          )}
+                          icon={MagnifyingGlassIcon}
+                          onClick={() => toggleSearchDrawer(true)}
+                        />
+                        {!!cart && hasProducts && (
+                          <IconButton
+                            aria-label="open shopping cart"
+                            className={clsx(
+                              'text-white hidden sm:mr-0.5 sm:inline-flex focus-within:!bg-primary-50',
+                              checkoutIconClassName,
+                            )}
+                            icon={(iconProps) => (
+                              <div className="relative">
+                                <ShoppingBagIcon
                                 {...iconProps}
                                 className={clsx(iconProps.className, 'hover:!bg-primary-50')}
                               />
