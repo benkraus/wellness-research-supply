@@ -618,16 +618,19 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                         to get notified.
                                       </p>
                                     ) : notifyBatchId ? (
-                                      <notifyFetcher.Form method="post" action="/api/notify">
-                                        <input type="hidden" name="variant_batch_id" value={notifyBatchId} />
-                                        <Button
-                                          type="submit"
-                                          className="!h-11 w-full !text-sm !font-bold"
-                                          disabled={notifyFetcher.state !== 'idle'}
-                                        >
-                                          {notifyFetcher.state !== 'idle' ? 'Saving…' : 'Notify me'}
-                                        </Button>
-                                      </notifyFetcher.Form>
+                                      <Button
+                                        type="button"
+                                        className="!h-11 w-full !text-sm !font-bold"
+                                        disabled={notifyFetcher.state !== 'idle'}
+                                        onClick={() =>
+                                          notifyFetcher.submit(
+                                            { variant_batch_id: notifyBatchId },
+                                            { method: 'post', action: '/api/notify' },
+                                          )
+                                        }
+                                      >
+                                        {notifyFetcher.state !== 'idle' ? 'Saving…' : 'Notify me'}
+                                      </Button>
                                     ) : (
                                       <p className="text-sm text-primary-200">Notify is unavailable for this batch.</p>
                                     )}

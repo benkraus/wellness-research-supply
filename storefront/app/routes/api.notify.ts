@@ -2,7 +2,7 @@ import { normalizePhoneNumber } from '@libs/util/phoneNumber';
 import { getCustomer } from '@libs/util/server/data/customer.server';
 import { data } from 'react-router';
 
-const KLAVIYO_REVISION = '2026-01-15';
+const KLAVIYO_REVISION = '2025-04-15';
 
 const getKlaviyoAuthHeaders = (apiKey: string) => ({
   accept: 'application/json',
@@ -90,6 +90,44 @@ export const action = async ({ request }: { request: Request }) => {
     return data({ error: 'Unable to prepare notification list.' }, { status: 502 });
   }
 
+  const sendSubscription = async (payload: {
+    email?: string;
+    phone?: string;
+    subscriptions: Record<string, unknown>;
+  }) => {
+    return await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', {
+      method: 'POST',
+      headers: getKlaviyoAuthHeaders(apiKey),
+      body: JSON.stringify({
+        data: {
+          type: 'profile-subscription-bulk-create-job',
+          attributes: {
+            profiles: {
+              data: [
+                {
+                  type: 'profile',
+                  attributes: {
+                    ...(payload.email ? { email: payload.email } : {}),
+                    ...(payload.phone ? { phone_number: payload.phone } : {}),
+                    ...(Object.keys(payload.subscriptions).length ? { subscriptions: payload.subscriptions } : {}),
+                  },
+                },
+              ],
+            },
+          },
+          relationships: {
+            list: {
+              data: {
+                type: 'list',
+                id: listId,
+              },
+            },
+          },
+        },
+      }),
+    });
+  };
+
   const subscriptions: Record<string, unknown> = {};
   if (email) {
     subscriptions.email = { marketing: { consent: 'SUBSCRIBED' } };
@@ -98,37 +136,14 @@ export const action = async ({ request }: { request: Request }) => {
     subscriptions.sms = { marketing: { consent: 'SUBSCRIBED' } };
   }
 
-  const response = await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs', {
-    method: 'POST',
-    headers: getKlaviyoAuthHeaders(apiKey),
-    body: JSON.stringify({
-      data: {
-        type: 'profile-subscription-bulk-create-job',
-        attributes: {
-          profiles: {
-            data: [
-              {
-                type: 'profile',
-                attributes: {
-                  ...(email ? { email } : {}),
-                  ...(phone ? { phone_number: phone } : {}),
-                  ...(Object.keys(subscriptions).length ? { subscriptions } : {}),
-                },
-              },
-            ],
-          },
-        },
-        relationships: {
-          list: {
-            data: {
-              type: 'list',
-              id: listId,
-            },
-          },
-        },
-      },
-    }),
-  });
+  let response = await sendSubscription({ email, phone, subscriptions });
+
+  if (!response.ok && phone && email) {
+    const retrySubscriptions: Record<string, unknown> = {
+      email: { marketing: { consent: 'SUBSCRIBED' } },
+    };
+    response = await sendSubscription({ email, subscriptions: retrySubscriptions });
+  }
 
   if (!response.ok) {
     const responseText = await response.text().catch(() => '');
