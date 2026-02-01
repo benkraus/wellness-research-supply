@@ -81,7 +81,10 @@ export const POST = async (req: MedusaStoreRequest, res: MedusaResponse) => {
     address_residential_indicator: 'unknown',
   };
 
-  const totalItems = (cart.items ?? []).reduce((sum, item) => sum + (item.quantity ?? 0), 0);
+  const totalItems = (cart.items ?? []).reduce((sum, item) => {
+    const quantity = typeof item.quantity === 'number' ? item.quantity : Number(item.quantity ?? 0);
+    return sum + (Number.isNaN(quantity) ? 0 : quantity);
+  }, 0);
   const packageCount = Math.max(1, Math.ceil(totalItems / 10));
   const packages = Array.from({ length: packageCount }, () => ({
     weight: {
