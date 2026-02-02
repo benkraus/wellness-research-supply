@@ -15,6 +15,7 @@ import { ProductReviewStars } from '@app/components/reviews/ProductReviewStars';
 import { Share } from '@app/components/share';
 import { Modal } from '@app/components/common/modals/Modal';
 import { HtmlContent } from '@app/components/common/content/HtmlContent';
+import { PdfViewer } from '@app/components/common/content/PdfViewer';
 import { useCart } from '@app/hooks/useCart';
 import { useCustomer } from '@app/hooks/useCustomer';
 import { useProductInventory } from '@app/hooks/useProductInventory';
@@ -765,17 +766,13 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
             </h3>
           </div>
           {coaModalLot && (
-            <div className="h-[70vh] w-full overflow-hidden rounded-lg border border-slate-200">
-              <iframe
-                title={`COA ${coaModalLot}`}
-                src={`/api/coa/${encodeURIComponent(coaModalLot)}.pdf`}
-                className="h-full w-full"
-              />
+            <div className="h-[75vh] w-full overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40 p-4">
+              <PdfViewer url={`/api/coa/${encodeURIComponent(coaModalLot)}/pdf`} />
             </div>
           )}
           {coaModalLot && (
             <a
-              href={`/api/coa/${encodeURIComponent(coaModalLot)}.pdf`}
+              href={`/api/coa/${encodeURIComponent(coaModalLot)}/pdf`}
               target="_blank"
               rel="noreferrer"
               className="text-sm font-semibold text-primary-600 underline underline-offset-4"
