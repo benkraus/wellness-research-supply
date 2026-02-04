@@ -3,47 +3,41 @@ import { useCheckout } from '@app/hooks/useCheckout';
 import { CheckoutStep } from '@app/providers/checkout-provider';
 import { Tab } from '@headlessui/react';
 import clsx from 'clsx';
-import { FC, useMemo } from 'react';
+import { useMemo } from 'react';
 import { EdebitPayment } from './EdebitPayment/EdebitPayment';
-import { ManualPayment } from './ManualPayment/ManualPayment';
 import { VenmoPayment } from './VenmoPayment/VenmoPayment';
 
-const SYSTEM_PROVIDER_ID = 'pp_system_default';
-
-export const CheckoutPayment: FC = () => {
+export const CheckoutPayment = () => {
   const { step, paymentProviders, cart } = useCheckout();
   const isActiveStep = step === CheckoutStep.PAYMENT;
-
-  if (!cart) return null;
 
   const activePaymentOptions = useMemo(
     () =>
       (paymentProviders ?? [])
-        .filter((provider) => !provider.id.includes('stripe'))
-        .map((provider) => {
+        .filter((provider) => {
           const isVenmo = provider.id.includes('venmo');
           const isEdebit = provider.id.includes('edebit');
+          return isVenmo || isEdebit;
+        })
+        .map((provider) => {
+          const isVenmo = provider.id.includes('venmo');
 
           return {
             id: provider.id,
-            label: isVenmo
-              ? 'Venmo'
-              : isEdebit
-                ? 'eDebit (ACH)'
-              : provider.id === SYSTEM_PROVIDER_ID
-                ? 'Manual Payment'
-                : provider.name ?? provider.id,
-            component: isVenmo ? VenmoPayment : isEdebit ? EdebitPayment : ManualPayment,
+            label: isVenmo ? 'Venmo' : 'eDebit (ACH)',
+            component: isVenmo ? VenmoPayment : EdebitPayment,
           };
         }),
     [paymentProviders],
   );
 
+  if (!cart) return null;
+
   if (activePaymentOptions.length === 0) {
     return (
       <div className="checkout-payment">
         <p className="text-sm text-gray-600">
-          No supported payment methods are available for this region. Card payments are not accepted. Reach us at
+          No supported payment methods are available. We accept Venmo and eDebit (ACH) only. Reach us at
           hello@wellnessresearchsupply.com for help.
         </p>
       </div>
@@ -56,7 +50,7 @@ export const CheckoutPayment: FC = () => {
         <Tab.Group>
           {activePaymentOptions.length > 1 && (
             <Tab.List className="bg-primary-50 mb-2 mt-6 inline-flex gap-0.5 rounded-full p-2">
-              {activePaymentOptions.map((paymentOption, index) => (
+              {activePaymentOptions.map((paymentOption) => (
                 <Tab
                   as={Button}
                   key={paymentOption.id}

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addressPayload, addressToMedusaAddress } from '@libs/util/addresses';
 import { normalizePhoneNumber } from '@libs/util/phoneNumber';
@@ -5,11 +6,9 @@ import { removeCartId } from '@libs/util/server/cookies.server';
 import { initiatePaymentSession, placeOrder, retrieveCart, updateCart } from '@libs/util/server/data/cart.server';
 import { getCustomerWithSensitive, upsertEdebitSavedMethod } from '@libs/util/server/data/customer.server';
 import type { StoreCart } from '@medusajs/types';
-import type { ActionFunctionArgs } from 'react-router';
-import { redirect, data as remixData } from 'react-router';
+import { redirect, data as remixData, type ActionFunctionArgs } from 'react-router';
 import { getValidatedFormData } from 'remix-hook-form';
 import { z } from 'zod';
-import { randomUUID } from 'node:crypto';
 
 const addressSchema = z.object({
   firstName: z.string().min(1, 'First name is required').optional(),
@@ -132,6 +131,23 @@ export async function action(actionArgs: ActionFunctionArgs) {
 
   if (errors) {
     return remixData({ errors }, { status: 400 });
+  }
+
+  const isAllowedProvider =
+    data.providerId.includes('venmo') || data.providerId.includes('edebit');
+
+  if (!isAllowedProvider) {
+    return remixData(
+      {
+        errors: {
+          root: {
+            message:
+              'Only Venmo and eDebit (ACH) payments are accepted. Please select a valid payment method.',
+          },
+        },
+      },
+      { status: 400 },
+    );
   }
 
   let cart = (await retrieveCart(actionArgs.request)) as StoreCart;
