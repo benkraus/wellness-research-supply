@@ -17,6 +17,8 @@ export const NewsletterSubscription: FC<{ className?: string }> = ({ className }
 
   const form = useRemixForm({
     resolver: zodResolver(newsletterSubscriberSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     fetcher,
     submitConfig: {
       method: 'post',

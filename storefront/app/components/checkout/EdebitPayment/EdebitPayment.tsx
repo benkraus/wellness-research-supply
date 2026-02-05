@@ -22,13 +22,16 @@ type EdebitSavedMethod = {
 export interface EdebitPaymentProps extends PropsWithChildren {
   isActiveStep: boolean;
   providerId: string;
+  paymentMethodToggle?: React.ReactNode;
 }
 
-export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) => {
+const EdebitPaymentFields = () => {
   const { customer } = useCustomer();
   const { register, setValue, watch } = useRemixFormContext();
   const methodsFetcher = useFetcher<{ methods?: EdebitSavedMethod[] }>();
   const [hasChosenMethod, setHasChosenMethod] = useState(false);
+  const fieldClassName =
+    "[&_input]:!bg-highlight-100/70 [&_input]:!border-primary-900/40 [&_input]:!text-primary-50 [&_input]:!shadow-none [&_label]:!text-primary-200";
 
   const savedMethodsFromCustomer = useMemo(() => {
     const metadata = (customer?.metadata ?? {}) as Record<string, unknown>;
@@ -83,13 +86,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
   };
 
   return (
-    <CompleteCheckoutForm
-      providerId={providerId}
-      id="EdebitPaymentForm"
-      submitMessage="Submit eDebit Payment"
-      className="mt-4"
-      {...props}
-    >
+    <>
       <div className="rounded-xl border border-primary-900/40 bg-highlight-100/80 p-4 text-primary-100">
         <p className="text-sm font-semibold">Pay with eDebit (ACH)</p>
         <p className="mt-1 text-sm">
@@ -107,29 +104,29 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
             const field = register("edebitSavedMethodId");
             return (
               <select
-              id="edebitSavedMethodId"
-              className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-primary-900/40 bg-highlight-100 px-3 text-sm text-primary-50 shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/40"
-              {...field}
-              onChange={(event) => {
-                field.onChange(event);
-                setHasChosenMethod(true);
-              }}
-            >
-              <option value="">Use a new bank account</option>
-              {savedMethods.map((method) => {
-                const label =
-                  method.label ||
-                  [method.bank_name, method.account_last4 ? `•••• ${method.account_last4}` : null]
-                    .filter(Boolean)
-                    .join(" ");
-                const suffix = method.is_default ? " (default)" : "";
-                return (
-                  <option key={method.id} value={method.id}>
-                    {(label || method.id) + suffix}
-                  </option>
-                );
-              })}
-            </select>
+                id="edebitSavedMethodId"
+                className="mt-2 block h-12 w-full cursor-pointer rounded-md border border-primary-900/40 bg-highlight-100 px-3 text-sm text-primary-50 shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/40"
+                {...field}
+                onChange={(event) => {
+                  field.onChange(event);
+                  setHasChosenMethod(true);
+                }}
+              >
+                <option value="">Use a new bank account</option>
+                {savedMethods.map((method) => {
+                  const label =
+                    method.label ||
+                    [method.bank_name, method.account_last4 ? `•••• ${method.account_last4}` : null]
+                      .filter(Boolean)
+                      .join(" ");
+                  const suffix = method.is_default ? " (default)" : "";
+                  return (
+                    <option key={method.id} value={method.id}>
+                      {(label || method.id) + suffix}
+                    </option>
+                  );
+                })}
+              </select>
             );
           })()}
         </div>
@@ -140,7 +137,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
           <p className="text-sm font-semibold">Using saved account</p>
           <p className="mt-1 text-sm">
             {selectedSaved.label || selectedSaved.bank_name}{" "}
-            {selectedSaved.account_last4 ? `•••• ${selectedSaved.account_last4}` : ''}
+            {selectedSaved.account_last4 ? `•••• ${selectedSaved.account_last4}` : ""}
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
             {!selectedSaved.is_default && (
@@ -175,14 +172,14 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
               name="edebitAccountName"
               label="Account holder name"
               placeholder="Full name on the account"
-              className="sm:col-span-2"
+              className={`sm:col-span-2 ${fieldClassName}`}
             />
 
             <StyledTextField
               name="edebitBankName"
               label="Bank name"
               placeholder="Bank name"
-              className="sm:col-span-2"
+              className={`sm:col-span-2 ${fieldClassName}`}
             />
 
             <StyledTextField
@@ -191,6 +188,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
               placeholder="9-digit routing number"
               inputMode="numeric"
               autoComplete="off"
+              className={fieldClassName}
             />
 
             <StyledTextField
@@ -199,6 +197,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
               placeholder="Checking account number"
               inputMode="numeric"
               autoComplete="off"
+              className={fieldClassName}
             />
 
             <StyledTextField
@@ -208,7 +207,7 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              className="sm:col-span-2"
+              className={`sm:col-span-2 ${fieldClassName}`}
               onInput={(event) => applyPhoneInputFormatting(event.currentTarget)}
             />
           </div>
@@ -222,6 +221,19 @@ export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, ...props }) 
           )}
         </>
       )}
-    </CompleteCheckoutForm>
+    </>
   );
 };
+
+export const EdebitPayment: FC<EdebitPaymentProps> = ({ providerId, paymentMethodToggle, ...props }) => (
+  <CompleteCheckoutForm
+    providerId={providerId}
+    id="EdebitPaymentForm"
+    submitMessage="Submit eDebit Payment"
+    className="mt-4"
+    paymentMethodToggle={paymentMethodToggle}
+    {...props}
+  >
+    <EdebitPaymentFields />
+  </CompleteCheckoutForm>
+);

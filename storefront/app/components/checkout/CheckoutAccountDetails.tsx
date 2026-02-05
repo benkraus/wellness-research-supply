@@ -104,6 +104,8 @@ const CheckoutAccountDetailsContent = ({
   const form = useRemixForm({
     resolver: zodResolver(accountDetailsSchema),
     defaultValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     fetcher: checkoutAccountDetailsFormFetcher,
     submitConfig: {
       method: 'post',

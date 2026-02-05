@@ -31,6 +31,8 @@ export const CheckoutOrderSummaryDiscountCode: FC<CheckoutOrderSummaryDiscountCo
       cartId: cart.id,
       code: '',
     },
+    mode: 'onChange',
+    reValidateMode: 'onChange',
 
     fetcher,
     submitConfig: {

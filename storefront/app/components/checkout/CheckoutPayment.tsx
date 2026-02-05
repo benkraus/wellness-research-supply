@@ -48,33 +48,41 @@ export const CheckoutPayment = () => {
     <div className="checkout-payment">
       <div className={clsx({ 'h-0 overflow-hidden opacity-0': !isActiveStep })}>
         <Tab.Group>
-          {activePaymentOptions.length > 1 && (
-            <Tab.List className="bg-primary-50 mb-2 mt-6 inline-flex gap-0.5 rounded-full p-2">
-              {activePaymentOptions.map((paymentOption) => (
-                <Tab
-                  as={Button}
-                  key={paymentOption.id}
-                  className={({ selected }) =>
-                    clsx('!rounded-full', {
-                      '!bg-white !text-gray-700 shadow-sm': selected,
-                      '!bg-primary-50 !border-primary-100 !text-primary-600 hover:!text-primary-800 hover:!bg-primary-100 !border-none':
-                        !selected,
-                    })
-                  }
-                >
-                  {paymentOption.label}
-                </Tab>
-              ))}
-            </Tab.List>
-          )}
-
           <Tab.Panels>
             {activePaymentOptions.map((paymentOption) => {
               const PaymentComponent = paymentOption.component;
+              const paymentMethodToggle =
+                activePaymentOptions.length > 1 ? (
+                  <Tab.List className="inline-flex rounded-full border border-primary-200/20 bg-primary-950/40 p-1">
+                    {activePaymentOptions.map((option) => (
+                      <Tab
+                        as={Button}
+                        key={option.id}
+                        className={({ selected }) =>
+                          clsx(
+                            '!rounded-full !border-0 !shadow-none !ring-0 !px-5 !py-2 !text-sm !font-semibold !leading-none',
+                            {
+                              '!bg-primary-50 !text-primary-900 shadow-[0_8px_20px_-12px_rgba(15,23,42,0.7)]':
+                                selected,
+                              '!bg-transparent !text-primary-200 hover:!text-primary-50 hover:!bg-primary-900/30':
+                                !selected,
+                            },
+                          )
+                        }
+                      >
+                        {option.label}
+                      </Tab>
+                    ))}
+                  </Tab.List>
+                ) : null;
 
               return (
                 <Tab.Panel key={paymentOption.id}>
-                  <PaymentComponent isActiveStep={isActiveStep} providerId={paymentOption.id} />
+                  <PaymentComponent
+                    isActiveStep={isActiveStep}
+                    providerId={paymentOption.id}
+                    paymentMethodToggle={paymentMethodToggle}
+                  />
                 </Tab.Panel>
               );
             })}

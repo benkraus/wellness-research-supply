@@ -6,7 +6,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: 7890,
     warmup: {
       clientFiles: ['./app/entry.client.tsx', './app/root.tsx', './app/routes/**/*'],
     },

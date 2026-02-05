@@ -2,11 +2,9 @@ import type { MedusaRequest, MedusaResponse } from '@medusajs/framework';
 import { Modules } from '@medusajs/framework/utils';
 import type { IFulfillmentModuleService, IOrderModuleService } from '@medusajs/framework/types';
 
-import { SHIPSTATION_API_KEY, SHIPSTATION_WEBHOOK_SECRET } from '../../../lib/constants';
+import { SHIPSTATION_API_KEY } from '../../../lib/constants';
 import { ShipStationClient } from '../../../modules/shipstation/client';
 import type { Label, Shipment } from '../../../modules/shipstation/types';
-
-const SECRET_HEADER = 'x-shipstation-webhook-secret';
 
 type ShipStationWebhookPayload = {
   event?: string;
@@ -21,13 +19,6 @@ type ShipStationWebhookPayload = {
   shipped_at?: string;
   status?: string;
   [key: string]: unknown;
-};
-
-const normalizeHeaderValue = (value: string | string[] | undefined) => {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-  return value;
 };
 
 const parseResourceId = (resourceUrl?: string, segment?: string) => {
@@ -66,17 +57,6 @@ const mergeTrackingEntries = (
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const payload = (req.body ?? {}) as ShipStationWebhookPayload;
-  const secret = SHIPSTATION_WEBHOOK_SECRET;
-
-  if (secret) {
-    const provided = normalizeHeaderValue(
-      (req.headers[SECRET_HEADER] as string | string[] | undefined) ??
-        (req.headers[SECRET_HEADER.toLowerCase()] as string | string[] | undefined),
-    );
-    if (!provided || provided !== secret) {
-      return res.status(401).json({ error: 'Unauthorized.' });
-    }
-  }
 
   if (!SHIPSTATION_API_KEY) {
     return res.status(500).json({ error: 'ShipStation API key is not configured.' });

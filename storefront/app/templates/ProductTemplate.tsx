@@ -148,6 +148,8 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
   const form = useRemixForm({
     resolver: zodResolver(createLineItemSchema),
     defaultValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     fetcher: addToCartFetcher,
     submitConfig: {
       method: 'post',
@@ -287,6 +289,7 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
       .slice(0, 2);
   }, [activeBatches]);
 
+  const hasAvailableCoa = activeCoaBatches.length > 0;
   const [coaModalLot, setCoaModalLot] = useState<string | null>(null);
 
   useEffect(() => {
@@ -407,6 +410,62 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
   }, [defaultValues.options]);
 
   const soldOut = !isPurchasable;
+  const renderCoaPanel = (variant: 'highlight' | 'default') => {
+    const isHighlight = variant === 'highlight';
+    const headingId = isHighlight ? 'coa-availability' : 'coa-transparency';
+    const description = isHighlight
+      ? 'View the Certificate of Analysis for the in-stock lot(s) below.'
+      : 'We obtain Certificates of Analysis (COAs) for each batch. The store may have multiple batches of the same product on hand at once, so there is not a single COA displayed on the product page.';
+
+    return (
+      <section
+        aria-labelledby={headingId}
+        className={`mt-4 rounded-2xl border ${
+          isHighlight ? 'border-primary-200/40 bg-primary-500/10' : 'border-primary-200/20 bg-highlight-100/20'
+        } p-4 sm:p-5 shadow-[0_16px_40px_-32px_rgba(45,212,191,0.65)]`}
+      >
+        <p
+          className={`text-2xs uppercase tracking-[0.3em] ${
+            isHighlight ? 'text-primary-100' : 'text-primary-300'
+          }`}
+        >
+          {isHighlight ? 'COA available' : 'COA transparency'}
+        </p>
+        <h4 id={headingId} className="mt-2 text-base font-semibold text-primary-50">
+          {isHighlight ? 'Certificates of Analysis for this batch' : 'Certificates of Analysis are batch specific'}
+        </h4>
+        <p className="mt-2 text-sm text-primary-200">{description}</p>
+        <div className="mt-4 space-y-2">
+          {activeCoaBatches.length > 0 ? (
+            activeCoaBatches.map((batch) => (
+              <button
+                key={batch.id}
+                type="button"
+                onClick={() => setCoaModalLot(batch.lot_number ?? null)}
+                className="inline-flex items-center gap-2 rounded-full border border-primary-200/30 px-4 py-2 text-xs font-semibold text-primary-50 hover:bg-highlight-100/40"
+              >
+                View COA PDF
+                {batch.lot_number ? (
+                  <span className="text-primary-200">(Lot {batch.lot_number})</span>
+                ) : null}
+              </button>
+            ))
+          ) : activeBatches.length > 0 ? (
+            <p className="text-sm text-primary-200">COA pending for the current batch.</p>
+          ) : (
+            <p className="text-sm text-primary-200">No active batches available.</p>
+          )}
+        </div>
+        <p className="mt-3 text-xs text-primary-200">
+          Have a lot number?{' '}
+          <Link to="/coa" className="font-semibold text-primary-50 underline underline-offset-4">
+            Look up your COA
+          </Link>
+          .
+        </p>
+      </section>
+    );
+  };
 
   // Use useCallback for the form submission handler
   const handleAddToCart = useCallback(() => {
@@ -528,6 +587,7 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                                 </div>
                               </div>
                             )}
+                            {hasAvailableCoa && renderCoaPanel('highlight')}
                           </section>
 
                           {productSelectOptions && productSelectOptions.length > 5 && (
@@ -660,47 +720,7 @@ export const ProductTemplate = ({ product, reviewsCount, reviewStats }: ProductT
                               </div>
                             )}
 
-                            <div className="mt-6 rounded-2xl border border-primary-200/20 bg-highlight-100/20 p-4 sm:p-5 shadow-[0_16px_40px_-32px_rgba(45,212,191,0.65)]">
-                              <p className="text-2xs uppercase tracking-[0.3em] text-primary-300">COA transparency</p>
-                              <h4 className="mt-2 text-base font-semibold text-primary-50">
-                                Certificates of Analysis are batch specific
-                              </h4>
-                              <p className="mt-2 text-sm text-primary-200">
-                                We obtain Certificates of Analysis (COAs) for each batch. The store may have multiple
-                                batches of the same product on hand at once, so there is not a single COA displayed on
-                                the product page.
-                              </p>
-                              <div className="mt-4 space-y-2">
-                                {activeCoaBatches.length > 0 ? (
-                                  activeCoaBatches.map((batch) => (
-                                    <button
-                                      key={batch.id}
-                                      type="button"
-                                      onClick={() => setCoaModalLot(batch.lot_number ?? null)}
-                                      className="inline-flex items-center gap-2 rounded-full border border-primary-200/30 px-4 py-2 text-xs font-semibold text-primary-50 hover:bg-highlight-100/40"
-                                    >
-                                      View COA PDF
-                                      {batch.lot_number ? (
-                                        <span className="text-primary-200">(Lot {batch.lot_number})</span>
-                                      ) : null}
-                                    </button>
-                                  ))
-                                ) : activeBatches.length > 0 ? (
-                                  <p className="text-sm text-primary-200">
-                                    COA pending for the current batch.
-                                  </p>
-                                ) : (
-                                  <p className="text-sm text-primary-200">No active batches available.</p>
-                                )}
-                              </div>
-                              <p className="mt-3 text-xs text-primary-200">
-                                Have a lot number?{' '}
-                                <Link to="/coa" className="font-semibold text-primary-50 underline underline-offset-4">
-                                  Look up your COA
-                                </Link>
-                                .
-                              </p>
-                            </div>
+                            {!hasAvailableCoa && renderCoaPanel('default')}
 
                             {product.categories && product.categories.length > 0 && (
                               <nav aria-label="Categories" className="mt-4">

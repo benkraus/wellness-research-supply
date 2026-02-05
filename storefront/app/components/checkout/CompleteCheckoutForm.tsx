@@ -13,12 +13,14 @@ import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
 import { CheckoutOrderSummary } from '.';
 import { FormError } from '../common/remix-hook-form/forms/FormError';
 import { AddressFormFields } from './address/AddressFormFields';
+import { formatPhoneNumberInput } from '@libs/util/phoneNumber';
 
 export interface CompleteCheckoutFormProps extends PropsWithChildren {
   id: string;
   providerId: string;
   submitMessage?: string;
   className?: string;
+  paymentMethodToggle?: React.ReactNode;
   onSubmit?: (
     data: CompleteCheckoutFormData,
     event: FormEvent<HTMLFormElement>,
@@ -36,6 +38,7 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
   children,
   providerId,
   className,
+  paymentMethodToggle,
 }) => {
   const { activePaymentSession, cart, isCartMutating } = useCheckout();
   const { customer } = useCustomer();
@@ -99,7 +102,7 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
     edebitRoutingNumber: '',
     edebitAccountNumber: '',
     edebitBankName: '',
-    edebitPhone: '',
+    edebitPhone: formatPhoneNumberInput(customer?.phone || cart?.shipping_address?.phone || ''),
     edebitSavedMethodId: '',
     edebitSaveMethod: false,
   };
@@ -107,6 +110,8 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
   const form = useRemixForm({
     resolver: zodResolver(completeCheckoutSchema),
     defaultValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     fetcher: completeCartFetcher,
     submitConfig: {
       method: 'post',
@@ -155,7 +160,7 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
   const PaymentSubmitButton = () => (
     <SubmitButton
       form={id}
-      className="w-full lg:w-auto"
+      className="mt-4 w-full lg:w-auto"
       disabled={isSubmitting || isCartMutating || (!sameAsShipping && !billingAddress)}
     >
       {isSubmitting ? 'Confirming...' : (submitMessage ?? 'Place order')}
@@ -239,7 +244,9 @@ export const CompleteCheckoutForm: FC<CompleteCheckoutFormProps> = ({
             disabled={isBillingDisabled}
           />
 
-          <div className="mt-6">{children}</div>
+          {paymentMethodToggle ? <div className="mt-6">{paymentMethodToggle}</div> : null}
+
+          <div className={paymentMethodToggle ? 'mt-6' : 'mt-8'}>{children}</div>
 
           <FormError />
         </completeCartFetcher.Form>

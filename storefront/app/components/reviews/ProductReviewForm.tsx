@@ -70,6 +70,8 @@ export const ProductReviewForm: FC<ProductReviewFormProps> = ({
 
   const form = useRemixForm({
     resolver: zodResolver(schema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     fetcher,
     submitHandlers: {
       onValid: (data) => {
