@@ -25,6 +25,11 @@ import type {
 
 export type ShipStationOptions = {
 	api_key: string;
+	/**
+	 * Request timeout used by the ShipStationClient (in milliseconds).
+	 * Keep optional for backwards compatibility with existing configs.
+	 */
+	timeout_ms?: number;
 };
 
 type FulfillmentContext = {
@@ -243,22 +248,23 @@ class ShipStationProviderService extends AbstractFulfillmentProviderService {
 			rate = rateResponse[0]?.rates?.[0];
 		}
 
-		const calculatedPrice = !rate
-			? 0
-			: rate.shipping_amount.amount +
-				rate.insurance_amount.amount +
-				rate.confirmation_amount.amount +
-				rate.other_amount.amount +
-				(rate.tax_amount?.amount || 0);
+			const calculatedPrice = !rate
+				? 0
+				: rate.shipping_amount.amount +
+					rate.insurance_amount.amount +
+					rate.confirmation_amount.amount +
+					rate.other_amount.amount +
+					(rate.tax_amount?.amount || 0);
 
-		if (rate) {
-			console.info("[ShipStation] rate timeline", {
-				rate_id: rate.rate_id,
-				carrier_delivery_days: rate.carrier_delivery_days,
-				delivery_days: rate.delivery_days,
-				delivery_date: rate.delivery_date,
-			});
-		}
+			// Avoid log spam during rate calculation (can be called many times per checkout).
+			if (rate && process.env.SHIPSTATION_DEBUG === "true") {
+				console.info("[ShipStation] rate timeline", {
+					rate_id: rate.rate_id,
+					carrier_delivery_days: rate.carrier_delivery_days,
+					delivery_days: rate.delivery_days,
+					delivery_date: rate.delivery_date,
+				});
+			}
 
 		return {
 			calculated_amount: calculatedPrice,

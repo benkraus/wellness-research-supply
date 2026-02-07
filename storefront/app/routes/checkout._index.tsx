@@ -12,12 +12,14 @@ import { initiatePaymentSession, retrieveCart, setShippingMethod } from '@libs/u
 import { getCustomer } from '@libs/util/server/data/customer.server';
 import { listCartPaymentProviders } from '@libs/util/server/data/payment.server';
 import { normalizePhoneNumber } from '@libs/util/phoneNumber';
+import { getShippingOptionAmount } from '@libs/util/checkout';
 import type { StoreCart, StoreCartShippingOption, StorePaymentProvider } from '@medusajs/types';
 import type { BasePaymentSession } from '@medusajs/types/dist/http/payment/common';
 import { useEffect, useRef } from 'react';
 import { Link, redirect, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 
 const SYSTEM_PROVIDER_ID = 'pp_system_default';
+const SHIPPING_TIMELINE_OPTIONS_LIMIT = 10;
 
 const fetchShippingOptions = async (cartId: string) => {
   if (!cartId) return [];
@@ -34,17 +36,21 @@ const fetchShippingOptions = async (cartId: string) => {
 };
 
 const findCheapestShippingOption = (shippingOptions: StoreCartShippingOption[]) => {
+  if (!shippingOptions.length) return null;
+
   return shippingOptions.reduce((cheapest, current) => {
-    return cheapest.amount <= current.amount ? cheapest : current;
+    return getShippingOptionAmount(current) < getShippingOptionAmount(cheapest) ? current : cheapest;
   }, shippingOptions[0]);
 };
 
-const ensureSelectedCartShippingMethod = async (request: Request, cart: StoreCart) => {
+const ensureSelectedCartShippingMethod = async (
+  request: Request,
+  cart: StoreCart,
+  shippingOptions: StoreCartShippingOption[],
+) => {
   const selectedShippingMethod = cart.shipping_methods?.[0];
 
   if (selectedShippingMethod) return;
-
-  const shippingOptions = await fetchShippingOptions(cart.id);
 
   const cheapestShippingOption = findCheapestShippingOption(shippingOptions);
 
@@ -132,13 +138,17 @@ export const loader = async ({
   const hasPhone = !!normalizePhoneNumber(shippingPhone);
   const hasAddress = !!shippingAddress?.address_1 && !!shippingAddress?.city;
 
+  // Avoid calling shipping option calculation endpoints multiple times per request.
+  const initialShippingOptions =
+    hasPhone && hasAddress ? await fetchShippingOptions(cartId) : ([] as StoreCartShippingOption[]);
+
   if (hasPhone && hasAddress) {
-    await ensureSelectedCartShippingMethod(request, cart);
+    await ensureSelectedCartShippingMethod(request, cart, initialShippingOptions);
   }
 
   const regionId = cart.region_id;
   const [shippingOptions, paymentProviders, activePaymentSession] = await Promise.all([
-    hasPhone && hasAddress ? fetchShippingOptions(cartId) : Promise.resolve([] as StoreCartShippingOption[]),
+    Promise.resolve(initialShippingOptions),
     regionId
       ? ((await listCartPaymentProviders(regionId)) as StorePaymentProvider[])
       : Promise.resolve([] as StorePaymentProvider[]),
@@ -152,6 +162,10 @@ export const loader = async ({
     const baseUrl = getMedusaBaseUrl();
     const timelineUrl = new URL('/store/shipping-options/timeline', baseUrl);
 
+    const timelineCandidates = [...shippingOptions]
+      .sort((a, b) => getShippingOptionAmount(a) - getShippingOptionAmount(b))
+      .slice(0, SHIPPING_TIMELINE_OPTIONS_LIMIT);
+
     const timelineResponse = await fetch(timelineUrl.toString(), {
       method: 'POST',
       headers: {
@@ -161,7 +175,7 @@ export const loader = async ({
       },
       body: JSON.stringify({
         cart_id: cartId,
-        options: shippingOptions.map((option) => ({
+        options: timelineCandidates.map((option) => ({
           id: option.id,
           data: option.data,
         })),

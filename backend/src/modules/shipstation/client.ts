@@ -18,34 +18,66 @@ export class ShipStationClient {
 	}
 
 	private async sendRequest<T>(url: string, data?: RequestInit): Promise<T> {
-		return fetch(`https://api.shipstation.com/v2${url}`, {
-			...data,
-			headers: {
-				...data?.headers,
-				"api-key": this.options.api_key,
-				"Content-Type": "application/json",
-			},
-		})
-			.then((resp) => {
-				const contentType = resp.headers.get("content-type");
-				if (!contentType?.includes("application/json")) {
-					return resp.text();
-				}
+		const timeoutMs = this.options.timeout_ms ?? 10_000;
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-				return resp.json();
+		// If a caller passed its own signal, tie it to our controller so either can abort the request.
+		const externalSignal = data?.signal;
+		if (externalSignal) {
+			if (externalSignal.aborted) controller.abort();
+			else {
+				externalSignal.addEventListener(
+					"abort",
+					() => {
+						controller.abort();
+					},
+					{ once: true },
+				);
+			}
+		}
+
+		try {
+			return await fetch(`https://api.shipstation.com/v2${url}`, {
+				...data,
+				signal: controller.signal,
+				headers: {
+					...data?.headers,
+					"api-key": this.options.api_key,
+					"Content-Type": "application/json",
+				},
 			})
-			.then((resp) => {
-				if (typeof resp !== "string" && resp.errors?.length) {
-					throw new MedusaError(
-						MedusaError.Types.INVALID_DATA,
-						`An error occurred while sending a request to ShipStation: ${resp.errors.map(
-							(error) => error.message,
-						)}`,
-					);
-				}
+				.then((resp) => {
+					const contentType = resp.headers.get("content-type");
+					if (!contentType?.includes("application/json")) {
+						return resp.text();
+					}
 
-				return resp as T;
-			});
+					return resp.json();
+				})
+				.then((resp) => {
+					if (typeof resp !== "string" && resp.errors?.length) {
+						throw new MedusaError(
+							MedusaError.Types.INVALID_DATA,
+							`An error occurred while sending a request to ShipStation: ${resp.errors.map(
+								(error) => error.message,
+							)}`,
+						);
+					}
+
+					return resp as T;
+				});
+		} catch (e: any) {
+			if (e?.name === "AbortError") {
+				throw new MedusaError(
+					MedusaError.Types.UNEXPECTED_STATE,
+					`ShipStation request timed out after ${timeoutMs}ms`,
+				);
+			}
+			throw e;
+		} finally {
+			clearTimeout(timeout);
+		}
 	}
 
 	async getCarriers(): Promise<CarriersResponse> {

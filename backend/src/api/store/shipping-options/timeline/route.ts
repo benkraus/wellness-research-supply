@@ -6,6 +6,10 @@ import { SHIPSTATION_API_KEY } from '../../../../lib/constants';
 import { ShipStationClient } from '../../../../modules/shipstation/client';
 import type { ShipStationAddress } from '../../../../modules/shipstation/types';
 
+const SHIPSTATION_TIMELINE_MAX_OPTIONS = 20;
+const SHIPSTATION_TIMELINE_CONCURRENCY = 4;
+const SHIPSTATION_REQUEST_TIMEOUT_MS = 8_000;
+
 type TimelineOption = {
   id: string;
   data?: {
@@ -19,6 +23,27 @@ type TimelineRequestBody = {
   options?: TimelineOption[];
 };
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const safeLimit = Math.max(1, Math.floor(limit));
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: Math.min(safeLimit, items.length) }, async () => {
+    for (;;) {
+      const current = nextIndex++;
+      if (current >= items.length) return;
+      results[current] = await fn(items[current], current);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
 export const POST = async (req: MedusaStoreRequest, res: MedusaResponse) => {
   if (!SHIPSTATION_API_KEY) {
     return res.status(500).json({ error: 'ShipStation API key is not configured.' });
@@ -26,7 +51,7 @@ export const POST = async (req: MedusaStoreRequest, res: MedusaResponse) => {
 
   const body = (req.body ?? {}) as TimelineRequestBody;
   const cartId = body.cart_id;
-  const options = body.options ?? [];
+  const options = (body.options ?? []).slice(0, SHIPSTATION_TIMELINE_MAX_OPTIONS);
 
   if (!cartId) {
     return res.status(400).json({ error: 'cart_id is required.' });
@@ -105,11 +130,16 @@ export const POST = async (req: MedusaStoreRequest, res: MedusaResponse) => {
     sku: typeof item.variant_sku === 'string' ? item.variant_sku : '',
   }));
 
-  const client = new ShipStationClient({ api_key: SHIPSTATION_API_KEY });
+  const client = new ShipStationClient({
+    api_key: SHIPSTATION_API_KEY,
+    timeout_ms: SHIPSTATION_REQUEST_TIMEOUT_MS,
+  });
   const currencyCode = cart.currency_code || 'usd';
 
-  const timelines = await Promise.all(
-    options.map(async (option) => {
+  const timelines = await mapWithConcurrency(
+    options,
+    SHIPSTATION_TIMELINE_CONCURRENCY,
+    async (option) => {
       const carrierId = option.data?.carrier_id;
       const serviceCode = option.data?.carrier_service_code;
 
@@ -117,41 +147,51 @@ export const POST = async (req: MedusaStoreRequest, res: MedusaResponse) => {
         return [option.id, null] as const;
       }
 
-      const shipment = await client.getShippingRates({
-        shipment: {
-          carrier_id: carrierId,
-          service_code: serviceCode,
-          ship_to: shipTo,
-          ship_from: shipFrom,
-          validate_address: 'no_validation',
-          items,
-          packages,
-          customs: {
-            contents: 'merchandise',
-            non_delivery: 'return_to_sender',
+      try {
+        const shipment = await client.getShippingRates({
+          shipment: {
+            carrier_id: carrierId,
+            service_code: serviceCode,
+            ship_to: shipTo,
+            ship_from: shipFrom,
+            validate_address: 'no_validation',
+            items,
+            packages,
+            customs: {
+              contents: 'merchandise',
+              non_delivery: 'return_to_sender',
+            },
           },
-        },
-        rate_options: {
-          carrier_ids: [carrierId],
-          service_codes: [serviceCode],
-          preferred_currency: currencyCode,
-        },
-      });
+          rate_options: {
+            carrier_ids: [carrierId],
+            service_codes: [serviceCode],
+            preferred_currency: currencyCode,
+          },
+        });
 
-      const rate = shipment.rate_response?.rates?.[0];
-      if (!rate) {
+        const rate = shipment.rate_response?.rates?.[0];
+        if (!rate) {
+          return [option.id, null] as const;
+        }
+
+        return [
+          option.id,
+          {
+            carrier_delivery_days: rate.carrier_delivery_days,
+            delivery_days: rate.delivery_days,
+            delivery_date: rate.delivery_date,
+          },
+        ] as const;
+      } catch (e: any) {
+        console.warn('[ShipStation] Failed to fetch timeline for shipping option', {
+          option_id: option.id,
+          carrier_id: carrierId,
+          carrier_service_code: serviceCode,
+          error: e?.message ?? String(e),
+        });
         return [option.id, null] as const;
       }
-
-      return [
-        option.id,
-        {
-          carrier_delivery_days: rate.carrier_delivery_days,
-          delivery_days: rate.delivery_days,
-          delivery_date: rate.delivery_date,
-        },
-      ] as const;
-    }),
+    },
   );
 
   return res.status(200).json({
