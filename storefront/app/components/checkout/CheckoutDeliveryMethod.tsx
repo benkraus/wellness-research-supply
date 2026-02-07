@@ -1,4 +1,5 @@
 import { Alert } from '@app/components/common/alert/Alert';
+import { Button } from '@app/components/common/buttons/Button';
 import { useCheckout } from '@app/hooks/useCheckout';
 import { CheckoutStep } from '@app/providers/checkout-provider';
 import {
@@ -15,11 +16,13 @@ import {
 import { formatPrice } from '@libs/util/prices';
 import type { StoreCart, StoreCartShippingOption } from '@medusajs/types';
 import type { BaseCartShippingMethod } from '@medusajs/types/dist/http/cart/common';
-import { FC, Fragment, useEffect, useMemo, useRef } from 'react';
+import { FC, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { RemixFormProvider, useRemixForm } from 'remix-hook-form';
 import { CheckoutSectionHeader } from './CheckoutSectionHeader';
 import { ShippingOptionsRadioGroup } from './checkout-fields/ShippingOptionsRadioGroup/ShippingOptionsRadioGroup';
+
+const SHIPPING_OPTIONS_PAGE_SIZE = 12;
 
 const getShippingOptionsDefaultValues = (
   cart: StoreCart,
@@ -53,6 +56,7 @@ export const CheckoutDeliveryMethod: FC<CheckoutDeliveryMethodProps> = ({ showHe
   const isActiveStep = step === CheckoutStep.ACCOUNT_DETAILS;
   const autoSelectRef = useRef(false);
   const previousFetcherState = useRef(fetcher.state);
+  const [visibleOptionsByProfile, setVisibleOptionsByProfile] = useState<Record<string, number>>({});
 
   const hasErrors = !!fetcher.data?.errors;
   const hasCompletedAccountDetails = cart ? checkAccountDetailsComplete(cart) : false;
@@ -138,7 +142,8 @@ export const CheckoutDeliveryMethod: FC<CheckoutDeliveryMethodProps> = ({ showHe
     form.handleSubmit();
   }, [cart?.region, cart?.shipping_methods, form, hasCompletedAccountDetails, isActiveStep, shippingOptionsByProfile]);
 
-  if (!cart?.region) return null;
+  const region = cart?.region;
+  if (!region) return null;
 
   return (
     <div className="checkout-delivery-method">
@@ -188,6 +193,22 @@ export const CheckoutDeliveryMethod: FC<CheckoutDeliveryMethodProps> = ({ showHe
               ([profileId, shippingOptions], shippingOptionProfileIndex) => {
                 if (shippingOptions.length < 1) return null;
 
+                const selectedId = values?.[shippingOptionProfileIndex] ?? null;
+                const visibleCount = visibleOptionsByProfile[profileId] ?? SHIPPING_OPTIONS_PAGE_SIZE;
+                const hasMore = shippingOptions.length > visibleCount;
+
+                // Only render a chunk at a time to keep the page responsive when there are lots of options.
+                let visibleShippingOptions = shippingOptions.slice(0, visibleCount);
+                if (
+                  selectedId &&
+                  !visibleShippingOptions.some((option) => option.id === selectedId)
+                ) {
+                  const selectedOption = shippingOptions.find((option) => option.id === selectedId);
+                  if (selectedOption) {
+                    visibleShippingOptions = [selectedOption, ...visibleShippingOptions];
+                  }
+                }
+
                 return (
                   <Fragment key={profileId}>
                     {shippingOptionProfileIndex > 0 && <hr className="my-6" />}
@@ -200,12 +221,33 @@ export const CheckoutDeliveryMethod: FC<CheckoutDeliveryMethodProps> = ({ showHe
                     <ShippingOptionsRadioGroup
                       disabled={isCartMutating}
                       name={`shippingOptionIds.${shippingOptionProfileIndex}`}
-                      shippingOptions={shippingOptions}
-                      region={cart.region}
+                      shippingOptions={visibleShippingOptions}
+                      region={region}
                       value={values?.[shippingOptionProfileIndex] ?? null}
                       selectedAmounts={selectedShippingAmounts}
                       onValueChange={(value) => form.setValue(`shippingOptionIds.${shippingOptionProfileIndex}`, value)}
                     />
+
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-xs text-primary-200/80">
+                        Showing {Math.min(visibleCount, shippingOptions.length)} of {shippingOptions.length} options
+                      </div>
+                      {hasMore && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="text-primary-200 underline underline-offset-4"
+                          onClick={() => {
+                            setVisibleOptionsByProfile((prev) => ({
+                              ...prev,
+                              [profileId]: (prev[profileId] ?? SHIPPING_OPTIONS_PAGE_SIZE) + SHIPPING_OPTIONS_PAGE_SIZE,
+                            }));
+                          }}
+                        >
+                          Show more
+                        </Button>
+                      )}
+                    </div>
                   </Fragment>
                 );
               },

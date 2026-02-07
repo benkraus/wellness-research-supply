@@ -20,6 +20,73 @@ import { Link, redirect, useLoaderData, type LoaderFunctionArgs } from 'react-ro
 
 const SYSTEM_PROVIDER_ID = 'pp_system_default';
 const SHIPPING_TIMELINE_OPTIONS_LIMIT = 10;
+const SHIPPING_OPTIONS_PER_PROFILE_LIMIT = 30;
+const SHIPPING_OPTIONS_TOTAL_LIMIT = 120;
+
+const compactShippingOptionForClient = (option: StoreCartShippingOption): StoreCartShippingOption => {
+  const data = (option.data && typeof option.data === 'object') ? (option.data as Record<string, unknown>) : null;
+  const deliveryTimeline = data ? (data.delivery_timeline as unknown) : null;
+
+  // Only keep the bits of data the UI/server code relies on. This keeps loader payloads small and avoids
+  // browser OOM/crashes when Medusa returns a large shipping option list.
+  const compactData =
+    data
+      ? {
+          carrier_id: data.carrier_id,
+          carrier_service_code: data.carrier_service_code,
+          ...(deliveryTimeline ? { delivery_timeline: deliveryTimeline } : {}),
+        }
+      : undefined;
+
+  return {
+    id: option.id,
+    name: option.name,
+    price_type: option.price_type,
+    amount: option.amount,
+    calculated_price: option.calculated_price,
+    shipping_profile_id: option.shipping_profile_id,
+    data: compactData,
+  } as unknown as StoreCartShippingOption;
+};
+
+const limitShippingOptionsForClient = (
+  options: StoreCartShippingOption[],
+  selectedOptionIds: string[],
+): StoreCartShippingOption[] => {
+  const byProfile = options.reduce<Record<string, StoreCartShippingOption[]>>((acc, option) => {
+    const profileId = option.shipping_profile_id;
+    if (!profileId) return acc;
+    if (!acc[profileId]) acc[profileId] = [];
+    acc[profileId].push(option);
+    return acc;
+  }, {});
+
+  const limited: StoreCartShippingOption[] = [];
+  Object.values(byProfile).forEach((profileOptions) => {
+    const sorted = [...profileOptions].sort((a, b) => getShippingOptionAmount(a) - getShippingOptionAmount(b));
+    limited.push(...sorted.slice(0, SHIPPING_OPTIONS_PER_PROFILE_LIMIT));
+  });
+
+  // Always include selected options, even if they'd be cut off by the limit.
+  const seen = new Set(limited.map((o) => o.id));
+  selectedOptionIds.forEach((id) => {
+    if (seen.has(id)) return;
+    const match = options.find((o) => o.id === id);
+    if (!match) return;
+    seen.add(id);
+    limited.push(match);
+  });
+
+  if (limited.length <= SHIPPING_OPTIONS_TOTAL_LIMIT) return limited;
+
+  const selectedSet = new Set(selectedOptionIds);
+  const selected = limited.filter((o) => selectedSet.has(o.id));
+  const rest = limited.filter((o) => !selectedSet.has(o.id));
+  rest.sort((a, b) => getShippingOptionAmount(a) - getShippingOptionAmount(b));
+
+  const remainingSlots = Math.max(0, SHIPPING_OPTIONS_TOTAL_LIMIT - selected.length);
+  return [...selected, ...rest.slice(0, remainingSlots)];
+};
 
 const fetchShippingOptions = async (cartId: string) => {
   if (!cartId) return [];
@@ -139,21 +206,39 @@ export const loader = async ({
   const hasAddress = !!shippingAddress?.address_1 && !!shippingAddress?.city;
 
   // Avoid calling shipping option calculation endpoints multiple times per request.
-  const initialShippingOptions =
-    hasPhone && hasAddress ? await fetchShippingOptions(cartId) : ([] as StoreCartShippingOption[]);
+  const rawShippingOptions = hasPhone && hasAddress ? await fetchShippingOptions(cartId) : ([] as StoreCartShippingOption[]);
 
   if (hasPhone && hasAddress) {
-    await ensureSelectedCartShippingMethod(request, cart, initialShippingOptions);
+    await ensureSelectedCartShippingMethod(request, cart, rawShippingOptions);
   }
 
-  const regionId = cart.region_id;
-  const [shippingOptions, paymentProviders, activePaymentSession] = await Promise.all([
-    Promise.resolve(initialShippingOptions),
+  // Re-retrieve cart so shipping_methods set above are reflected and we can keep the selected option even if we cap.
+  const updatedCart = await retrieveCart(request);
+
+  const regionId = updatedCart.region_id;
+  const [paymentProviders, activePaymentSession] = await Promise.all([
     regionId
       ? ((await listCartPaymentProviders(regionId)) as StorePaymentProvider[])
       : Promise.resolve([] as StorePaymentProvider[]),
-    await ensureCartPaymentSessions(request, cart),
+    await ensureCartPaymentSessions(request, updatedCart),
   ]);
+
+  const selectedShippingOptionIds =
+    updatedCart.shipping_methods
+      ?.map((m) => m.shipping_option_id)
+      .filter((id): id is string => Boolean(id)) ?? [];
+
+  const shippingOptions = hasPhone && hasAddress
+    ? limitShippingOptionsForClient(rawShippingOptions, selectedShippingOptionIds).map(compactShippingOptionForClient)
+    : ([] as StoreCartShippingOption[]);
+
+  if (process.env.CHECKOUT_DEBUG === 'true') {
+    console.info('[Checkout] shipping options payload', {
+      raw_count: rawShippingOptions.length,
+      selected_count: selectedShippingOptionIds.length,
+      client_count: shippingOptions.length,
+    });
+  }
 
   let shippingOptionsWithTimeline = shippingOptions;
 
@@ -201,8 +286,6 @@ export const loader = async ({
       });
     }
   }
-
-  const updatedCart = await retrieveCart(request);
 
   return {
     cart: updatedCart,

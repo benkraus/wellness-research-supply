@@ -10,6 +10,51 @@ import type {
 	VoidLabelResponse,
 } from "./types";
 
+class Semaphore {
+	private available: number;
+	private queue: Array<() => void> = [];
+
+	constructor(max: number) {
+		this.available = Math.max(1, Math.floor(max));
+	}
+
+	private async acquire(): Promise<() => void> {
+		if (this.available > 0) {
+			this.available -= 1;
+			return () => this.release();
+		}
+
+		return await new Promise((resolve) => {
+			this.queue.push(() => {
+				this.available -= 1;
+				resolve(() => this.release());
+			});
+		});
+	}
+
+	private release() {
+		this.available += 1;
+		const next = this.queue.shift();
+		if (next) next();
+	}
+
+	async withPermit<T>(fn: () => Promise<T>): Promise<T> {
+		const release = await this.acquire();
+		try {
+			return await fn();
+		} finally {
+			release();
+		}
+	}
+}
+
+const SHIPSTATION_MAX_CONCURRENCY = (() => {
+	const raw = Number(process.env.SHIPSTATION_MAX_CONCURRENCY ?? 2);
+	return Number.isFinite(raw) ? raw : 2;
+})();
+
+const shipstationSemaphore = new Semaphore(SHIPSTATION_MAX_CONCURRENCY);
+
 export class ShipStationClient {
 	options: ShipStationOptions;
 
@@ -38,35 +83,37 @@ export class ShipStationClient {
 		}
 
 		try {
-			return await fetch(`https://api.shipstation.com/v2${url}`, {
-				...data,
-				signal: controller.signal,
-				headers: {
-					...data?.headers,
-					"api-key": this.options.api_key,
-					"Content-Type": "application/json",
-				},
-			})
-				.then((resp) => {
-					const contentType = resp.headers.get("content-type");
-					if (!contentType?.includes("application/json")) {
-						return resp.text();
-					}
-
-					return resp.json();
+			return await shipstationSemaphore.withPermit(async () => {
+				return await fetch(`https://api.shipstation.com/v2${url}`, {
+					...data,
+					signal: controller.signal,
+					headers: {
+						...data?.headers,
+						"api-key": this.options.api_key,
+						"Content-Type": "application/json",
+					},
 				})
-				.then((resp) => {
-					if (typeof resp !== "string" && resp.errors?.length) {
-						throw new MedusaError(
-							MedusaError.Types.INVALID_DATA,
-							`An error occurred while sending a request to ShipStation: ${resp.errors.map(
-								(error) => error.message,
-							)}`,
-						);
-					}
+					.then((resp) => {
+						const contentType = resp.headers.get("content-type");
+						if (!contentType?.includes("application/json")) {
+							return resp.text();
+						}
 
-					return resp as T;
-				});
+						return resp.json();
+					})
+					.then((resp) => {
+						if (typeof resp !== "string" && resp.errors?.length) {
+							throw new MedusaError(
+								MedusaError.Types.INVALID_DATA,
+								`An error occurred while sending a request to ShipStation: ${resp.errors.map(
+									(error) => error.message,
+								)}`,
+							);
+						}
+
+						return resp as T;
+					});
+			});
 		} catch (e: any) {
 			if (e?.name === "AbortError") {
 				throw new MedusaError(
